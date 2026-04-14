@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "624999107309",
+    "project_id": "mobile-app-development-b304f",
+    "storage_bucket": "mobile-app-development-b304f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:624999107309:android:ade0be4de2d51a80e19ae4",
+        "android_client_info": {
+          "package_name": "com.example.massa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMVlRwgrI70_KNydZZnN8d2CVMpyELj-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
