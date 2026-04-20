@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:massa/service/auth_service.dart';
 
-class LogInScreen extends StatelessWidget {
+class LogInScreen extends StatefulWidget {
   const LogInScreen({super.key});
+
+  @override
+  State<LogInScreen> createState() => _LogInScreenState();
+}
+
+class _LogInScreenState extends State<LogInScreen> {
+  final AuthService _authService = AuthService();
+
+  String email = "";
+  String password = "";
 
   @override
   Widget build(BuildContext context) {
@@ -17,11 +28,9 @@ class LogInScreen extends StatelessWidget {
               const SizedBox(height: 32),
               _buildHeader(),
               const SizedBox(height: 40),
-              // We pass the context down here so the form can use navigation
-              _buildForm(context), 
+              _buildForm(context),
               const SizedBox(height: 32),
-              // We pass the context here too, for when you link up the "Sign up" button!
-              _buildFooter(context), 
+              _buildFooter(context),
             ],
           ),
         ),
@@ -95,7 +104,6 @@ class LogInScreen extends StatelessWidget {
     );
   }
 
-  // Notice we now accept BuildContext here
   Widget _buildForm(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,6 +139,11 @@ class LogInScreen extends StatelessWidget {
               borderSide: const BorderSide(color: Color(0xFFCE1126), width: 1.5),
             ),
           ),
+          onChanged: (val) {
+            setState(() {
+              email = val;
+            });
+          },
         ),
         const SizedBox(height: 20),
         Row(
@@ -164,7 +177,7 @@ class LogInScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextFormField(
-          obscureText: true, 
+          obscureText: true,
           decoration: InputDecoration(
             hintText: 'Enter your password',
             hintStyle: const TextStyle(
@@ -185,6 +198,11 @@ class LogInScreen extends StatelessWidget {
               borderSide: const BorderSide(color: Color(0xFFCE1126), width: 1.5),
             ),
           ),
+          onChanged: (val) {
+            setState(() {
+              password = val;
+            });
+          },
         ),
         const SizedBox(height: 20),
         Row(
@@ -193,7 +211,7 @@ class LogInScreen extends StatelessWidget {
               height: 20,
               width: 20,
               child: Checkbox(
-                value: false, 
+                value: false,
                 onChanged: (bool? value) {},
                 side: const BorderSide(color: Color(0xFFD1D5DC)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -221,11 +239,11 @@ class LogInScreen extends StatelessWidget {
     return Column(
       children: [
         SizedBox(
-          width: double.infinity, 
+          width: double.infinity,
           height: 48,
           child: ElevatedButton(
-            onPressed: () {
-              // TODO: Add login logic here
+            onPressed: () async {
+              _authService.signInWithEmailPassword(email, password);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFCE1126),

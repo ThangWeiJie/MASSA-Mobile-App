@@ -6,6 +6,10 @@ class AuthService {
 
   User? get currentUser => firebaseAuth.currentUser;
 
+  Stream<User?> get authStateChanges {
+    return firebaseAuth.authStateChanges();
+  }
+
   // Utility mapper function (Firebase User -> Model User)
   UserModel? userFromFirebaseUser(User? user) {
     if (user == null) {
@@ -13,10 +17,6 @@ class AuthService {
     }
 
     return UserModel(uuid: user.uid, email: user.email!, phone: user.phoneNumber!);
-  }
-
-  Future signIn() async {
-
   }
 
   // Sign in
