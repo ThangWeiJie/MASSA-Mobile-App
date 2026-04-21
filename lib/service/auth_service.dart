@@ -10,15 +10,6 @@ class AuthService {
     return firebaseAuth.authStateChanges();
   }
 
-  // Utility mapper function (Firebase User -> Model User)
-  UserModel? userFromFirebaseUser(User? user) {
-    if (user == null) {
-      throw Error();
-    }
-
-    return UserModel(uuid: user.uid, email: user.email!, phone: user.phoneNumber!);
-  }
-
   // Sign in
   Future signInWithEmailPassword(String email, String password) async {
     try {
@@ -26,11 +17,34 @@ class AuthService {
       var user = userFromFirebaseUser(credentials.user);
       return user;
     } catch(e) {
-      print(e.toString());
+      rethrow;
     }
   }
 
   // Register
 
+  // Reset password
+  
+  // Future<void> resetPassword(String email) async {
+  //   try {
+  //     await firebaseAuth.sendPasswordResetEmail(email: email);
+  //     firebaseAuth.confirmPasswordReset(code: code, newPassword: newPassword)
+  //   } catch (e) {
+  //     rethrow;
+  //   }
+  // }
+  
   // Sign out
+  Future<void> signOut() async {
+    await firebaseAuth.signOut();
+  }
+
+  // Utility mapper function (Firebase User -> Model User)
+  UserModel? userFromFirebaseUser(User? user) {
+    if (user == null) {
+      throw Error();
+    }
+
+    return UserModel(uuid: user.uid, email: user.email ?? "", phone: user.phoneNumber ?? "");
+  }
 }

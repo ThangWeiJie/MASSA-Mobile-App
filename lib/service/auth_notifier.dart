@@ -24,4 +24,10 @@ class AuthNotifier extends ChangeNotifier {
       rethrow;
     }
   }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
 }

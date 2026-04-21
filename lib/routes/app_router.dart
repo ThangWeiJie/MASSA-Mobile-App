@@ -1,16 +1,17 @@
-import 'package:flutter/material.dart';
-
 import 'package:go_router/go_router.dart';
-import 'package:massa/screens/HomePage.dart';
 import 'package:massa/service/auth_notifier.dart';
 import 'package:massa/service/auth_service.dart';
-import '../screens/sign_in/signin_screen.dart';
-import '../screens/forgot_password/forgot_password_screen.dart';
+import 'package:massa/view_models/login_viewmodel.dart';
+import 'package:massa/views/home_page.dart';
+import 'package:massa/views/forgot_password/forgot_password_screen.dart';
+import 'package:massa/views/sign_in/signin_screen.dart';
+import 'package:provider/provider.dart';
 
 class AppRouter {
   AppRouter._internal();
 
   static final AppRouter _instance = AppRouter._internal();
+
   factory AppRouter() => _instance;
 
   final authService = AuthService();
@@ -24,7 +25,13 @@ class AppRouter {
       GoRoute(
         path: "/signin",
         name: "signin",
-        builder: (context, state) => const LogInScreen(),
+        builder: (context, state) {
+          return ChangeNotifierProvider(
+            create: (context) =>
+                LoginViewModel(authService: context.read<AuthService>()),
+            child: const LoginScreen(),
+          );
+        },
       ),
       GoRoute(
         path: "/forgot-password",
@@ -34,8 +41,8 @@ class AppRouter {
       GoRoute(
         path: "/",
         name: "Home",
-        builder: (context, state) => const Homepage(),
-      )
+        builder: (context, state) => Homepage(authService: authService),
+      ),
     ],
   );
 
@@ -44,13 +51,13 @@ class AppRouter {
     final currentPath = state.matchedLocation;
 
     final publicRoutes = ['/signin', 'signup', '/forgot-password'];
-    final isPublicRoute = publicRoutes.contains(currentPath);
+    final isOnPublicRoute = publicRoutes.contains(currentPath);
 
-    if (!isAuthenticated && !isPublicRoute) {
+    if (!isAuthenticated && !isOnPublicRoute) {
       return '/signin';
     }
 
-    if (isAuthenticated && isPublicRoute) {
+    if (isAuthenticated && isOnPublicRoute) {
       return '/';
     }
 

@@ -1,23 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:massa/service/auth_service.dart';
+import 'package:provider/provider.dart';
+import 'package:massa/view_models/login_viewmodel.dart';
 
-class LogInScreen extends StatefulWidget {
-  const LogInScreen({super.key});
-
-  @override
-  State<LogInScreen> createState() => _LogInScreenState();
-}
-
-class _LogInScreenState extends State<LogInScreen> {
-  final AuthService _authService = AuthService();
-
-  String email = "";
-  String password = "";
-
+class LoginScreen extends StatelessWidget {
+  const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.watch<LoginViewModel>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0),
       body: SafeArea(
@@ -29,9 +21,9 @@ class _LogInScreenState extends State<LogInScreen> {
               const SizedBox(height: 32),
               _buildHeader(),
               const SizedBox(height: 40),
-              _buildForm(context),
+              _buildForm(context, viewModel),
               const SizedBox(height: 32),
-              _buildFooter(context),
+              _buildFooter(context, viewModel),
             ],
           ),
         ),
@@ -61,7 +53,7 @@ class _LogInScreenState extends State<LogInScreen> {
                   blurRadius: 6,
                   offset: Offset(0, 4),
                   spreadRadius: -1,
-                )
+                ),
               ],
             ),
             child: const Center(
@@ -105,7 +97,7 @@ class _LogInScreenState extends State<LogInScreen> {
     );
   }
 
-  Widget _buildForm(BuildContext context) {
+  Widget _buildForm(BuildContext context, LoginViewModel viewModel) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -128,23 +120,28 @@ class _LogInScreenState extends State<LogInScreen> {
               fontFamily: 'Inter',
               fontWeight: FontWeight.w400,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 16,
+            ),
             filled: true,
             fillColor: Colors.white,
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFD1D5DC), width: 1.18),
+              borderSide: const BorderSide(
+                color: Color(0xFFD1D5DC),
+                width: 1.18,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFCE1126), width: 1.5),
+              borderSide: const BorderSide(
+                color: Color(0xFFCE1126),
+                width: 1.5,
+              ),
             ),
           ),
-          onChanged: (val) {
-            setState(() {
-              email = val;
-            });
-          },
+          onChanged: viewModel.updateEmail,
         ),
         const SizedBox(height: 20),
         Row(
@@ -187,23 +184,28 @@ class _LogInScreenState extends State<LogInScreen> {
               fontFamily: 'Inter',
               fontWeight: FontWeight.w400,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 16,
+            ),
             filled: true,
             fillColor: Colors.white,
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFD1D5DC), width: 1.18),
+              borderSide: const BorderSide(
+                color: Color(0xFFD1D5DC),
+                width: 1.18,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFCE1126), width: 1.5),
+              borderSide: const BorderSide(
+                color: Color(0xFFCE1126),
+                width: 1.5,
+              ),
             ),
           ),
-          onChanged: (val) {
-            setState(() {
-              password = val;
-            });
-          },
+          onChanged: viewModel.updatePassword,
         ),
         const SizedBox(height: 20),
         Row(
@@ -215,7 +217,9 @@ class _LogInScreenState extends State<LogInScreen> {
                 value: false,
                 onChanged: (bool? value) {},
                 side: const BorderSide(color: Color(0xFFD1D5DC)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 activeColor: const Color(0xFFCE1126),
               ),
             ),
@@ -236,16 +240,16 @@ class _LogInScreenState extends State<LogInScreen> {
   }
 
   // We accept BuildContext here too
-  Widget _buildFooter(BuildContext context) {
+  Widget _buildFooter(BuildContext context, LoginViewModel viewModel) {
     return Column(
       children: [
         SizedBox(
           width: double.infinity,
           height: 48,
           child: ElevatedButton(
-            onPressed: () async {
-              _authService.signInWithEmailPassword(email, password);
-            },
+            onPressed: viewModel.isLoading
+                ? null
+                : () => _handleLogin(context, viewModel),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFCE1126),
               shape: RoundedRectangleBorder(
@@ -253,15 +257,17 @@ class _LogInScreenState extends State<LogInScreen> {
               ),
               elevation: 0,
             ),
-            child: const Text(
-              'Log In',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            child: viewModel.isLoading
+                ? CircularProgressIndicator(color: Colors.white)
+                : const Text(
+                    'Log In',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 16),
@@ -299,5 +305,19 @@ class _LogInScreenState extends State<LogInScreen> {
         ),
       ],
     );
+  }
+
+  void _handleLogin(BuildContext context, LoginViewModel viewModel) async {
+    try {
+      await viewModel.login();
+    } catch (e) {
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Login failed: $e")));
+    }
   }
 }
