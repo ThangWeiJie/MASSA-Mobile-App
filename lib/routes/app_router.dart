@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:massa/service/auth_notifier.dart';
 import 'package:massa/service/auth_service.dart';
+import 'package:massa/view_models/forgot_password_viewmodel.dart';
 import 'package:massa/view_models/login_viewmodel.dart';
 import 'package:massa/views/home_page.dart';
 import 'package:massa/views/forgot_password/forgot_password_screen.dart';
@@ -36,7 +37,13 @@ class AppRouter {
       GoRoute(
         path: "/forgot-password",
         name: "forgot-password",
-        builder: (context, state) => const ForgotPasswordScreen(),
+        builder: (context, state) {
+          return ChangeNotifierProvider(
+              create: (context) =>
+                  ForgotPasswordViewmodel(authService: context.read<AuthService>()),
+            child: const ForgotPasswordScreen(),
+          );
+        },
       ),
       GoRoute(
         path: "/",

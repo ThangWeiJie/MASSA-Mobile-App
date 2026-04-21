@@ -24,15 +24,22 @@ class AuthService {
   // Register
 
   // Reset password
-  
-  // Future<void> resetPassword(String email) async {
-  //   try {
-  //     await firebaseAuth.sendPasswordResetEmail(email: email);
-  //     firebaseAuth.confirmPasswordReset(code: code, newPassword: newPassword)
-  //   } catch (e) {
-  //     rethrow;
-  //   }
-  // }
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await firebaseAuth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> resetPassword(String code, String newPassword) async {
+    try {
+      firebaseAuth.confirmPasswordReset(code: code, newPassword: newPassword);
+    } catch (e) {
+      rethrow;
+    }
+  }
   
   // Sign out
   Future<void> signOut() async {

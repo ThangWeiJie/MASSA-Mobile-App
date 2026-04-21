@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -310,14 +311,31 @@ class LoginScreen extends StatelessWidget {
   void _handleLogin(BuildContext context, LoginViewModel viewModel) async {
     try {
       await viewModel.login();
+    } on FirebaseAuthException catch (e) {
+      if (!context.mounted) {
+        return;
+      }
+
+      String message = _handleErrorMessage(e);
+      _showSnackBar(context, message);
     } catch (e) {
       if (!context.mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Login failed: $e")));
+      _showSnackBar(context, "An unexpected error has occurred");
     }
+  }
+
+  String _handleErrorMessage(FirebaseAuthException e) {
+    switch(e.code) {
+      case "invalid-credential": return "Wrong email or password";
+
+      default: return "";
+    }
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
