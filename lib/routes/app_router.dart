@@ -30,7 +30,7 @@ class AppRouter {
           return ChangeNotifierProvider(
             create: (context) =>
                 LoginViewModel(authService: context.read<AuthService>()),
-            child: const LoginScreen(),
+            child: const SignUpScreen(),
           );
         },
       ),
@@ -39,8 +39,9 @@ class AppRouter {
         name: "forgot-password",
         builder: (context, state) {
           return ChangeNotifierProvider(
-              create: (context) =>
-                  ForgotPasswordViewmodel(authService: context.read<AuthService>()),
+            create: (context) => ForgotPasswordViewmodel(
+              authService: context.read<AuthService>(),
+            ),
             child: const ForgotPasswordScreen(),
           );
         },

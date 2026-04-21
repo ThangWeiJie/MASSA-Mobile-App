@@ -11,20 +11,41 @@ class AuthService {
   }
 
   // Sign in
-  Future signInWithEmailPassword(String email, String password) async {
+  Future<UserModel?> signInWithEmailPassword(
+    String email,
+    String password,
+  ) async {
     try {
-      final credentials = await firebaseAuth.signInWithEmailAndPassword(email: email, password: password);
-      var user = userFromFirebaseUser(credentials.user);
-      return user;
-    } catch(e) {
+      final credentials = await firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return userFromFirebaseUser(credentials.user);
+    } catch (e) {
       rethrow;
     }
   }
 
   // Register
+  Future<UserModel?> createUserWithEmailPassword({
+    required String email,
+    required String password,
+    required String fullName,
+  }) async {
+    try {
+      final credentials = await firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Optional: later save fullName in Firestore
+      return userFromFirebaseUser(credentials.user);
+    } catch (e) {
+      rethrow;
+    }
+  }
 
   // Reset password
-
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await firebaseAuth.sendPasswordResetEmail(email: email);
@@ -35,12 +56,15 @@ class AuthService {
 
   Future<void> resetPassword(String code, String newPassword) async {
     try {
-      firebaseAuth.confirmPasswordReset(code: code, newPassword: newPassword);
+      await firebaseAuth.confirmPasswordReset(
+        code: code,
+        newPassword: newPassword,
+      );
     } catch (e) {
       rethrow;
     }
   }
-  
+
   // Sign out
   Future<void> signOut() async {
     await firebaseAuth.signOut();
@@ -49,9 +73,13 @@ class AuthService {
   // Utility mapper function (Firebase User -> Model User)
   UserModel? userFromFirebaseUser(User? user) {
     if (user == null) {
-      throw Error();
+      return null;
     }
 
-    return UserModel(uuid: user.uid, email: user.email ?? "", phone: user.phoneNumber ?? "");
+    return UserModel(
+      uuid: user.uid,
+      email: user.email ?? "",
+      phone: user.phoneNumber ?? "",
+    );
   }
 }
