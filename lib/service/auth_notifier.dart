@@ -15,6 +15,7 @@ class AuthNotifier extends ChangeNotifier {
   }
 
   bool get isAuthenticated => _authService.currentUser != null;
+  bool get isEmailVerified => _authService.currentUser?.emailVerified ?? false;
   User? get currentUser => _authService.currentUser;
 
   Future<void> signIn(String email, String password) async {
@@ -23,6 +24,11 @@ class AuthNotifier extends ChangeNotifier {
     } catch (e) {
       rethrow;
     }
+  }
+
+  Future<void> refreshUser() async {
+    await _authService.refreshUser();
+    notifyListeners();
   }
 
   @override

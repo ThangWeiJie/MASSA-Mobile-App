@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:massa/firebase_options.dart';
 import 'package:massa/models/user.dart';
+import 'package:massa/service/auth_notifier.dart';
 import 'package:massa/service/auth_service.dart';
 import 'package:provider/provider.dart';
 import 'routes/app_router.dart';
@@ -22,6 +23,12 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<AuthService>(create: (_) => AuthService()),
+        ChangeNotifierProvider<AuthNotifier>(
+            create: (context) => AuthNotifier(context.read<AuthService>()),
+        ),
+        ProxyProvider<AuthNotifier, AppRouter>(
+          update: (context, authNotifier, previous) => AppRouter(authNotifier),
+        ),
         StreamProvider<UserModel?>(
           initialData: null,
           create: (context) {
@@ -35,12 +42,18 @@ class MyApp extends StatelessWidget {
           },
         ),
       ],
-      child: MaterialApp.router(
-        title: 'Massa Demo',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        ),
-        routerConfig: AppRouter().router,
+      child: Builder(
+        builder: (context) {
+          final appRouter = context.read<AppRouter>();
+
+          return MaterialApp.router(
+            title: 'Massa Demo',
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+            ),
+            routerConfig: appRouter.router,
+          );
+        }
       ),
     );
   }
