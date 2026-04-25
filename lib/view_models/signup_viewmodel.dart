@@ -5,7 +5,7 @@ class SignupViewModel extends ChangeNotifier {
   final AuthService _authService;
 
   SignupViewModel({required AuthService authService})
-      : _authService = authService;
+    : _authService = authService;
 
   String _fullName = "";
   String _email = "";
@@ -18,9 +18,13 @@ class SignupViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   void updateFullName(String value) => _fullName = value.trim();
+
   void updateEmail(String value) => _email = value.trim();
+
   void updatePassword(String value) => _password = value.trim();
+
   void updateConfirmPassword(String value) => _confirmPassword = value.trim();
+
   void updateAgreeToTerms(bool value) => _agreeToTerms = value;
 
   Future<void> signup() async {
@@ -40,8 +44,9 @@ class SignupViewModel extends ChangeNotifier {
 
     try {
       await _authService.registerNewAccount(
-         _email,
-        _password,
+          email: _email,
+          password: _password,
+          name: _fullName,
       );
     } catch (e) {
       rethrow;

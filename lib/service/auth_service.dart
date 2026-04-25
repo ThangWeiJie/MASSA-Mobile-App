@@ -1,8 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:massa/enums/role_enum.dart';
 import 'package:massa/models/user.dart';
+import 'package:massa/repository/user_repository.dart';
 
 class AuthService {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
+  final UserRepository _userRepository;
+
+  AuthService(this._userRepository);
 
   User? get currentUser => firebaseAuth.currentUser;
 
@@ -27,9 +32,23 @@ class AuthService {
   }
 
   // Register
-  Future<void> registerNewAccount(String email, String password) async {
+  Future<void> registerNewAccount({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
     try {
       UserCredential userCredential = await firebaseAuth.createUserWithEmailAndPassword(email: email, password: password);
+
+      final newUser = UserModel(
+          uuid: userCredential.user!.uid,
+          email: email,
+          role: Role.user,
+          fullName: name,
+          createdOn: DateTime.now()
+      );
+
+      await _userRepository.createMember(newUser);
 
       await userCredential.user?.sendEmailVerification();
     } catch (e) {
@@ -60,11 +79,11 @@ class AuthService {
   }
 
   // Utility mapper function (Firebase User -> Model User)
-  UserModel? userFromFirebaseUser(User? user) {
+  Future<UserModel?> userFromFirebaseUser(User? user) async {
     if (user == null) {
       throw Error();
     }
 
-    return UserModel(uuid: user.uid, email: user.email ?? "", phone: user.phoneNumber ?? "");
+    return await _userRepository.getUser(user.uid);
   }
 }
