@@ -1,10 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:massa/enums/role_enum.dart';
+import 'package:massa/models/user.dart';
+import 'package:massa/view_models/profile_viewmodel.dart';
+import 'package:provider/provider.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.watch<ProfileViewModel>();
+    final user = context.watch<UserModel?>();
+
+    if (viewModel.isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -34,17 +45,16 @@ class ProfilePage extends StatelessWidget {
           // Section 2: Personal Information
           _buildSectionHeader("Personal Information"),
           const SizedBox(height: 10),
-          _infoRow(Icons.person_outline, "Full Name", "Jane Doe"),
-          _infoRow(Icons.email_outlined, "Email", "jane.doe@example.com"),
-          _infoRow(Icons.phone_android, "Phone", "+1 234 567 890"),
+          _infoRow(Icons.person_outline, "Full Name", user?.fullName ?? ''),
+          _infoRow(Icons.email_outlined, "Email", viewModel.user?.email ?? ''),
 
           const SizedBox(height: 30),
 
           _buildSectionHeader("Membership Status"),
           const SizedBox(height: 10),
-          _infoRow(Icons.card_membership, "Member ID", "#CLUB-99283"),
-          _infoRow(Icons.verified_user_outlined, "Role", "Member"),
-          _infoRow(Icons.calendar_month, "Renewal Date", "Dec 31, 2026"),
+          _infoRow(Icons.card_membership, "Member ID", "Temp ID"),
+          _infoRow(Icons.verified_user_outlined, "Role", viewModel.user?.role.name ?? Role.user.name),
+          _infoRow(Icons.calendar_month, "Joined on", viewModel.user?.memberSince.toString().split(' ').first ?? ''),
 
           const SizedBox(height: 40),
 

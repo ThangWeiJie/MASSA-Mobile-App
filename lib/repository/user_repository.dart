@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:massa/models/user.dart';
 
 import '../enums/role_enum.dart';
@@ -19,14 +18,11 @@ class UserRepository {
           return _loadingUser(firebaseUser);
         }
 
-        print("Actual Firebase Error: ${e.message}");
         return null;
       } catch (e) {
         if (e.toString().contains("not found")) {
           return _loadingUser(firebaseUser);
         }
-
-        print("Unexpected error in userStream: $e");
         rethrow;
       }
     });
@@ -48,7 +44,7 @@ class UserRepository {
 
     try {
       await _firestore.collection("users").doc(user.uuid).set(userMap);
-    } on Exception catch (e) {
+    } on Exception {
       rethrow;
     }
   }

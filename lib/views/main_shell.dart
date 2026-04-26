@@ -26,10 +26,46 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Massa"),
+        centerTitle: true,
         actions: [
-          IconButton(
-              onPressed: () => _handleSignOut(context),
-              icon: Icon(Icons.logout)
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: PopupMenuButton<String>(
+              child: CircleAvatar(
+                radius: 24,
+              ),
+              onSelected: (value) {
+                switch (value) {
+                  case 'profile':
+                    context.go("/profile");
+                    break;
+                  case 'logout':
+                    _handleSignOut(context);
+                    break;
+                }
+              },
+
+              itemBuilder: (BuildContext context) {
+                return [
+                  const PopupMenuItem<String>(
+                    value: 'profile',
+                    child: ListTile(
+                      leading: Icon(Icons.person),
+                      title: Text('View Profile'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'logout',
+                    child: ListTile(
+                      leading: Icon(Icons.logout, color: Colors.red),
+                      title: Text('Logout', style: TextStyle(color: Colors.red)),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ];
+              },
+            ),
           )
         ],
       ),
@@ -37,15 +73,20 @@ class MainShell extends StatelessWidget {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _calculatedSelectedIndex(context),
         onTap: (index) => _onItemTapped(index, context),
+        selectedItemColor: Colors.blue,       // Color when the tab IS active
+        unselectedItemColor: Colors.grey,     // Color when the tab IS NOT active
+        showUnselectedLabels: true,           // Ensures labels are always visible
         items: tabs.map((tab) => BottomNavigationBarItem(icon: Icon(tab.icon), label: tab.label)).toList(),
       ),
     );
   }
 
   int _calculatedSelectedIndex(BuildContext context) {
-    final String location = GoRouterState.of(context).matchedLocation;
+    final String location = GoRouterState.of(context).uri.path;
 
-    return tabs.indexWhere((tab) => location.startsWith(tab.path));
+    final index = tabs.indexWhere((tab) => location == tab.path);
+
+    return index < 0 ? 0 : index;
   }
 
   void _onItemTapped(int index, BuildContext context) {

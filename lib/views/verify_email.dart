@@ -7,6 +7,8 @@ class VerifyEmail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final email = context.watch<AuthNotifier>().currentUser?.email;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0),
       body: SafeArea(
@@ -24,7 +26,7 @@ class VerifyEmail extends StatelessWidget {
                   "Verify your email",
                 ),
                 Text(
-                  "We have sent a verification email to the following email address: xxx@gmail.com. Verify your email to continue.",
+                  "We have sent a verification email to the following email address: $email. Verify your email to continue.",
                 ),
                 ElevatedButton(
                   onPressed: () async {
