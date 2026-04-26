@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:massa/firebase_options.dart';
 import 'package:massa/models/user.dart';
+import 'package:massa/repository/user_repository.dart';
 import 'package:massa/service/auth_notifier.dart';
 import 'package:massa/service/auth_service.dart';
 import 'package:provider/provider.dart';
@@ -22,7 +23,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider<AuthService>(create: (_) => AuthService()),
+        Provider<UserRepository>(create: (_) => UserRepository()),
+        ProxyProvider<UserRepository, AuthService>(
+            update: (context, userRepository, previousAuthService) => AuthService(userRepository)
+        ),
         ChangeNotifierProvider<AuthNotifier>(
             create: (context) => AuthNotifier(context.read<AuthService>()),
         ),
@@ -31,15 +35,7 @@ class MyApp extends StatelessWidget {
         ),
         StreamProvider<UserModel?>(
           initialData: null,
-          create: (context) {
-            final authService = context.read<AuthService>();
-
-            return authService.authStateChanges.map((firebaseUser) {
-              if (firebaseUser == null) return null;
-
-              return authService.userFromFirebaseUser(firebaseUser);
-            });
-          },
+          create: (context) => context.read<UserRepository>().userStream,
         ),
       ],
       child: Builder(
