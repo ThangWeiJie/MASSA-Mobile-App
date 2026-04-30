@@ -48,7 +48,7 @@ class ForgotPasswordScreen extends StatelessWidget {
             child: Text(
               '?',
               style: TextStyle(
-                color: Color(0xFFCE1126), // Match theme red
+                color: Color(0xFFCE1126), 
                 fontSize: 42,
                 fontFamily: 'Arial',
                 fontWeight: FontWeight.w700,
