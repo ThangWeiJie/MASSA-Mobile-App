@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:massa/service/auth_service.dart';
+import 'package:massa/service/features/auth/auth_service.dart';
 
 class ForgotPasswordViewmodel extends ChangeNotifier {
   final AuthService _authService;

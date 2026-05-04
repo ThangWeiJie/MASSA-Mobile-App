@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:massa/service/auth_notifier.dart';
+import 'package:massa/service/features/auth/auth_notifier.dart';
 import 'package:provider/provider.dart';
 
 class VerifyEmail extends StatelessWidget {
