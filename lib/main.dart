@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:massa/firebase_options.dart';
 import 'package:massa/models/user.dart';
 import 'package:massa/repository/user_repository.dart';
-import 'package:massa/service/auth_notifier.dart';
-import 'package:massa/service/auth_service.dart';
+import 'package:massa/service/features/auth/auth_notifier.dart';
+import 'package:massa/service/features/auth/auth_service.dart';
 import 'package:provider/provider.dart';
 import 'routes/app_router.dart';
 

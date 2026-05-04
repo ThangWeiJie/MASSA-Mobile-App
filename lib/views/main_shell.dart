@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:massa/service/auth_service.dart';
+import 'package:massa/service/features/auth/auth_service.dart';
 import 'package:massa/tab_list.dart';
 import 'package:provider/provider.dart';
 
