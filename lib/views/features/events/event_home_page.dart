@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:massa/enums/role_enum.dart';
 import 'package:massa/mock_data_dir/event_mock_data/event_mock_data.dart';
+import 'package:massa/models/user.dart';
+import 'package:massa/repository/user_repository.dart';
 
-class EventHomePage extends StatelessWidget {
-  const EventHomePage({super.key});
+class EventList extends StatelessWidget {
+  const EventList({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +64,39 @@ class EventHomePage extends StatelessWidget {
             ),
           );
         }
+    );
+  }
+}
+
+
+class EventHomePage extends StatelessWidget {
+  final UserRepository userRepository;
+
+  const EventHomePage({super.key, required this.userRepository});
+
+  @override
+  Widget build(BuildContext context) {
+
+
+    return Scaffold(
+      body: EventList(),
+      floatingActionButton: StreamBuilder<UserModel?>(
+          stream: userRepository.userStream,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return SizedBox.shrink();
+
+            final user = snapshot.data;
+
+            if (user?.role == Role.exco || user?.role == Role.admin) {
+              return FloatingActionButton(
+                onPressed: () => context.go("/events/create"),
+                child: Icon(Icons.add)
+              );
+            }
+
+            return SizedBox.shrink();
+          }
+      )
     );
   }
 }

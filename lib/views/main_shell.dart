@@ -84,7 +84,13 @@ class MainShell extends StatelessWidget {
   int _calculatedSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;
 
-    final index = tabs.indexWhere((tab) => location == tab.path);
+    final index = tabs.indexWhere((tab) {
+      if (tab.path == '/') {
+        return location == '/';
+      }
+      
+      return location.startsWith(tab.path);
+    });
 
     return index < 0 ? 0 : index;
   }

@@ -3,11 +3,15 @@ import 'package:massa/models/user.dart';
 import 'package:massa/repository/user_repository.dart';
 import 'package:massa/service/features/auth/auth_notifier.dart';
 import 'package:massa/service/features/auth/auth_service.dart';
+import 'package:massa/service/features/events/event_service.dart';
 import 'package:massa/tab_list.dart';
 import 'package:massa/view_models/features/authentication/forgot_password_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/login_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/profile_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/signup_viewmodel.dart';
+import 'package:massa/view_models/features/events/create_event_viewmodel.dart';
+import 'package:massa/views/exco_guard.dart';
+import 'package:massa/views/features/events/create_event_page.dart';
 import 'package:massa/views/features/events/event_home_page.dart';
 import 'package:massa/views/home_page_content.dart';
 import 'package:massa/views/main_shell.dart';
@@ -80,8 +84,24 @@ class AppRouter {
           ),
           GoRoute(
             path: eventPath,
-            name: "Events",
-            pageBuilder: (context, state) => NoTransitionPage(child: const EventHomePage())
+            name: "Events Home Page",
+            pageBuilder: (context, state) => NoTransitionPage(
+                child: EventHomePage(userRepository: context.read<UserRepository>())
+            )
+          ),
+          GoRoute(
+            path: "$eventPath/create",
+            name: "Create Event Page",
+            pageBuilder: (context, state) => NoTransitionPage(
+                child: ExcoGuard(
+                    child: ChangeNotifierProvider(
+                      create: (providerContext) => CreateEventViewModel(
+                        eventService: context.read<EventService>(),
+                      ),
+                      child: const CreateEventPage(),
+                    ),
+                ),
+            ),
           ),
           GoRoute(
             path: profilePath,

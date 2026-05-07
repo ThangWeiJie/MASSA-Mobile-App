@@ -47,6 +47,7 @@ class UserRepository {
       rethrow;
     }
   }
+
   Future<UserModel> getUser(String uid) async {
     DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
 
