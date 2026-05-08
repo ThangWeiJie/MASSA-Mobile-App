@@ -39,4 +39,32 @@ class EventRepository {
       rethrow;
     }
   }
+
+  Future<List<Event>> getAllEvents() async {
+    try {
+      final QuerySnapshot snapshot = await _firestore.collection('events').get();
+
+      return snapshot.docs.map((document) {
+        final data = document.data() as Map<String, dynamic>;
+
+        return Event.fromMap(data, document.id);
+      }).toList();
+    } catch (e) {
+      throw Exception("Failed to fetch events: $e");
+    }
+  }
+
+  Future<Event> getEventById(String id) async {
+    try {
+      final doc = await _firestore.collection('events').doc(id).get();
+
+      if (!doc.exists) {
+        throw Exception("Event not found");
+      }
+
+      return Event.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+    } catch(e) {
+      throw Exception("Failed to fetch event: $e");
+    }
+  }
 }
