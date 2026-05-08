@@ -7,6 +7,8 @@ import 'package:massa/repository/user_repository.dart';
 import 'package:massa/service/features/auth/auth_notifier.dart';
 import 'package:massa/service/features/auth/auth_service.dart';
 import 'package:massa/service/features/events/event_service.dart';
+// --- ADDED: Import for the EventViewModel ---
+import 'package:massa/view_models/features/events/event_viewmodel.dart'; 
 import 'package:provider/provider.dart';
 import 'routes/app_router.dart';
 
@@ -31,10 +33,16 @@ class MyApp extends StatelessWidget {
             update: (context, userRepository, previousAuthService) => AuthService(userRepository)
         ),
         ProxyProvider<EventRepository, EventService>(
-            update: (context, eventRepository, previousEventService) => EventService(eventRepository: eventRepository)
+            update: (context, eventRepository, previousEventService) => 
+                EventService(eventRepository: eventRepository)
+        ),
+        // --- ADDED: Global EventViewModel Provider ---
+        // Placing it here allows both HomePage and EventHomePage to access it.
+        ChangeNotifierProvider<EventViewModel>(
+          create: (context) => EventViewModel(context.read<EventService>()),
         ),
         ChangeNotifierProvider<AuthNotifier>(
-            create: (context) => AuthNotifier(context.read<AuthService>()),
+          create: (context) => AuthNotifier(context.read<AuthService>()),
         ),
         ProxyProvider<AuthNotifier, AppRouter>(
           update: (context, authNotifier, previous) => AppRouter(authNotifier),

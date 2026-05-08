@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:massa/models/user.dart';
 import 'package:massa/repository/user_repository.dart';
@@ -11,11 +12,16 @@ import 'package:massa/view_models/features/authentication/profile_viewmodel.dart
 import 'package:massa/view_models/features/authentication/signup_viewmodel.dart';
 import 'package:massa/view_models/features/events/create_event_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_details_viewmodel.dart';
-import 'package:massa/view_models/features/events/event_viewmodel.dart';
+import 'package:massa/view_models/features/events/event_registration_viewmodel.dart';
+// --- ADDED: Attendee List ViewModel Import ---
+import 'package:massa/view_models/features/events/attendee_list_viewmodel.dart'; 
 import 'package:massa/views/exco_guard.dart';
 import 'package:massa/views/features/events/create_event_page.dart';
 import 'package:massa/views/features/events/event_details_page.dart';
 import 'package:massa/views/features/events/event_home_page.dart';
+import 'package:massa/views/features/events/event_registration_page.dart';
+// --- ADDED: Attendee List Page Import ---
+import 'package:massa/views/features/events/attendee_list_page.dart'; 
 import 'package:massa/views/home_page_content.dart';
 import 'package:massa/views/main_shell.dart';
 import 'package:massa/views/features/authentication/forgot_password_screen.dart';
@@ -35,7 +41,7 @@ class AppRouter {
     refreshListenable: authNotifier,
     redirect: (context, state) => _handleRedirect(state),
     routes: [
-      // Public routes
+      // --- Public Routes ---
       GoRoute(
         path: "/signin",
         name: "signin",
@@ -68,15 +74,36 @@ class AppRouter {
         name: "forgot-password",
         builder: (routeContext, state) {
           return ChangeNotifierProvider(
-            create: (providerContext) =>
-                ForgotPasswordViewmodel(
-                  authService: routeContext.read<AuthService>(),
-                ),
+            create: (providerContext) => ForgotPasswordViewmodel(
+              authService: routeContext.read<AuthService>(),
+            ),
             child: const ForgotPasswordScreen(),
           );
         },
       ),
 
+      // --- Floating Create Event Route (Outside Shell to hide Navbar) ---
+      GoRoute(
+        path: "$eventPath/create",
+        name: "Create Event Page",
+        pageBuilder: (context, state) => CustomTransitionPage(
+          opaque: false,
+          barrierColor: Colors.black54,
+          child: ExcoGuard(
+            child: ChangeNotifierProvider(
+              create: (providerContext) => CreateEventViewModel(
+                eventService: context.read<EventService>(),
+              ),
+              child: const CreateEventPage(),
+            ),
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      ),
+
+      // --- Main Application Shell (Routes with Navbar) ---
       ShellRoute(
         builder: (routerContext, state, child) {
           return MainShell(child: child);
@@ -86,66 +113,74 @@ class AppRouter {
             path: homePath,
             name: "Home",
             pageBuilder: (context, state) =>
-                NoTransitionPage(child: const HomePage()),
+                const NoTransitionPage(child: HomePage()),
           ),
           GoRoute(
             path: eventPath,
             name: "Events Home Page",
-            pageBuilder: (context, state) =>
-                NoTransitionPage(
-                  child: ChangeNotifierProvider(
-                    create: (_) => EventViewModel(context.read<EventService>()),
-                    child: EventHomePage(
-                      userRepository: context.read<UserRepository>(),
-                    ),
-                  ),
+            pageBuilder: (context, state) => NoTransitionPage(
+                child: EventHomePage(
+                  userRepository: context.read<UserRepository>(),
                 ),
-          ),
+              ),
+            ),
           GoRoute(
-              path: '$eventPath/details/:eventId',
-              builder: (context, state) {
-                final eventId = state.pathParameters['eventId']!;
+            path: '$eventPath/details/:eventId',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+              final currentUser = context.read<UserModel?>();
 
-                return ChangeNotifierProvider(
-                  create: (_) =>
-                      EventDetailsViewModel(
-                          eventService: context.read<EventService>(),
-                          eventId: eventId
-                      ),
-                  child: const EventDetailsPage(),
-                );
-              }
+              return ChangeNotifierProvider(
+                create: (_) => EventDetailsViewModel(
+                  eventService: context.read<EventService>(),
+                  eventId: eventId,
+                  currentUserId: currentUser?.uuid,
+                ),
+                child: const EventDetailsPage(),
+              );
+            },
+          ),
+          // --- ADDED: Attendee List Route ---
+          GoRoute(
+            path: '$eventPath/details/:eventId/attendees',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+              return ExcoGuard(
+                child: ChangeNotifierProvider(
+                  create: (_) => AttendeeListViewModel(
+                    eventService: context.read<EventService>(),
+                    eventId: eventId,
+                  ),
+                  child: const AttendeeListPage(),
+                ),
+              );
+            },
           ),
           GoRoute(
-            path: "$eventPath/create",
-            name: "Create Event Page",
-            pageBuilder: (context, state) =>
-                NoTransitionPage(
-                  child: ExcoGuard(
-                    child: ChangeNotifierProvider(
-                      create: (providerContext) =>
-                          CreateEventViewModel(
-                            eventService: context.read<EventService>(),
-                          ),
-                      child: const CreateEventPage(),
-                    ),
-                  ),
+            path: '$eventPath/details/:eventId/register',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+              return ChangeNotifierProvider(
+                create: (_) => EventRegistrationViewModel(
+                  eventService: context.read<EventService>(),
+                  eventId: eventId,
                 ),
+                child: const EventRegistrationPage(),
+              );
+            },
           ),
           GoRoute(
             path: profilePath,
             name: "Profile",
             pageBuilder: (context, state) {
               final currentUser = context.read<UserModel?>();
-
               return NoTransitionPage(
                 child: ChangeNotifierProvider(
-                  create: (context) =>
-                      ProfileViewModel(
-                        userRepo: context.read<UserRepository>(),
-                        userId: currentUser?.uuid ?? '',
-                      ),
-                  child: const ProfilePage(),
+                  create: (context) => ProfileViewModel(
+                    userRepo: context.read<UserRepository>(),
+                    userId: currentUser?.uuid ?? '',
+                  ),
+                  child: const ProfileScreen(),
                 ),
               );
             },

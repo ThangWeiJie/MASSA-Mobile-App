@@ -6,23 +6,78 @@ class EventService {
 
   EventService({required this.eventRepository});
 
-  Future<void> createEvent({required String eventName, required String eventDescription, required DateTime startDateTime, required DateTime endDateTime}) async {
+  Future<void> createEvent({
+    required String eventName, 
+    required String eventDescription, 
+    required DateTime startDateTime, 
+    required DateTime endDateTime,
+    required String location,
+    required int capacity,
+    required int registeredCount,
+  }) async {
     try {
       await eventRepository.createEvent(
           eventName: eventName,
           eventDescription: eventDescription,
           startDateTime: startDateTime,
-          endDateTime: endDateTime
+          endDateTime: endDateTime,
+          location: location,
+          capacity: capacity,
+          registeredCount: registeredCount
       );
     } catch(e) {
       rethrow;
     }
   }
 
+  Future<void> updateEvent(String id, Map<String, dynamic> data) async {
+    try {
+      await eventRepository.updateEvent(id, data);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> deleteEvent(String id) async {
+    try {
+      await eventRepository.deleteEvent(id);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // --- Registration Methods ---
+  
+  Future<void> toggleEventRegistration({
+      required String eventId,
+      required String userId,
+      required bool isJoining,
+  }) async {
+    await eventRepository.toggleRegistrationTransaction(
+      eventId: eventId,
+      userId: userId,
+      isRegistering: isJoining,
+    );
+  }
+
+  Future<bool> isUserRegistered(String eventId, String userId) async {
+      return await eventRepository.checkUserRegistration(eventId, userId);
+  }
+
+  // NEW: Fetches all event IDs a specific user has joined
+  Future<List<String>> getRegisteredEventIds(String userId) async {
+    try {
+      return await eventRepository.getRegisteredEventIds(userId);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // --- Fetching Methods ---
+
   Future<List<Event>> getAllEvents() async {
     try {
-      var events = await eventRepository.getAllEvents();
-      return events;
+      return await eventRepository.getAllEvents();
     } catch (e) {
       rethrow;
     }
@@ -30,10 +85,15 @@ class EventService {
 
   Future<Event> getEventById(String id) async {
     try {
-      Event event = await eventRepository.getEventById(id);
-      return event;
+      return await eventRepository.getEventById(id);
     } catch (e) {
       rethrow;
     }
+  }
+
+  // --- Participant Management ---
+
+  Stream<List<Map<String, dynamic>>> getEventParticipants(String eventId) {
+    return eventRepository.getParticipantsStream(eventId);
   }
 }
