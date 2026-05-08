@@ -28,7 +28,6 @@ class UserRepository {
     });
   }
 
-// Helper to keep the code clean
   UserModel _loadingUser(User firebaseUser) {
     return UserModel(
       uuid: firebaseUser.uid,
@@ -48,6 +47,7 @@ class UserRepository {
       rethrow;
     }
   }
+
   Future<UserModel> getUser(String uid) async {
     DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
 

@@ -2,9 +2,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:massa/firebase_options.dart';
 import 'package:massa/models/user.dart';
+import 'package:massa/repository/event_repository.dart';
 import 'package:massa/repository/user_repository.dart';
-import 'package:massa/service/auth_notifier.dart';
-import 'package:massa/service/auth_service.dart';
+import 'package:massa/service/features/auth/auth_notifier.dart';
+import 'package:massa/service/features/auth/auth_service.dart';
+import 'package:massa/service/features/events/event_service.dart';
 import 'package:provider/provider.dart';
 import 'routes/app_router.dart';
 
@@ -24,8 +26,12 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<UserRepository>(create: (_) => UserRepository()),
+        Provider<EventRepository>(create: (_) => EventRepository()),
         ProxyProvider<UserRepository, AuthService>(
             update: (context, userRepository, previousAuthService) => AuthService(userRepository)
+        ),
+        ProxyProvider<EventRepository, EventService>(
+            update: (context, eventRepository, previousEventService) => EventService(eventRepository: eventRepository)
         ),
         ChangeNotifierProvider<AuthNotifier>(
             create: (context) => AuthNotifier(context.read<AuthService>()),

@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:massa/view_models/forgot_password_viewmodel.dart';
+import 'package:massa/view_models/features/authentication/forgot_password_viewmodel.dart';
 import 'package:provider/provider.dart';
 
 class ForgotPasswordScreen extends StatelessWidget {
@@ -48,7 +48,7 @@ class ForgotPasswordScreen extends StatelessWidget {
             child: Text(
               '?',
               style: TextStyle(
-                color: Color(0xFFCE1126), // Match theme red
+                color: Color(0xFFCE1126), 
                 fontSize: 42,
                 fontFamily: 'Arial',
                 fontWeight: FontWeight.w700,

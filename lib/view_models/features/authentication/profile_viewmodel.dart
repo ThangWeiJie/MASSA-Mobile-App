@@ -8,6 +8,13 @@ class ProfileViewModel extends ChangeNotifier {
 
   UserModel? _userModel;
   bool _isLoading = false;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   UserModel? get user => _userModel;
   bool get isLoading => _isLoading;
@@ -18,7 +25,9 @@ class ProfileViewModel extends ChangeNotifier {
 
   Future<void> fetchUser() async {
     _setLoading(true);
-    _userModel = await _userRepository.getUser(userId);
+    final result = await _userRepository.getUser(userId);
+    if (_disposed) return;
+    _userModel = result;
     _setLoading(false);
   }
 

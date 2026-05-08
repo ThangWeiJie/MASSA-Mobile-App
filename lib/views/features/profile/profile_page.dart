@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:massa/enums/role_enum.dart';
 import 'package:massa/models/user.dart';
-import 'package:massa/view_models/profile_viewmodel.dart';
+import 'package:massa/view_models/features/authentication/profile_viewmodel.dart';
 import 'package:provider/provider.dart';
 
 class ProfilePage extends StatelessWidget {

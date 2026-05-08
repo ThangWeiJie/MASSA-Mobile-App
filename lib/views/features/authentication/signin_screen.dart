@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:massa/view_models/login_viewmodel.dart';
+import 'package:massa/view_models/features/authentication/login_viewmodel.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -36,37 +36,11 @@ class LoginScreen extends StatelessWidget {
     return Column(
       children: [
         Center(
-          child: Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: const Color(0xFFCE1126),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x19000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                  spreadRadius: -2,
-                ),
-                BoxShadow(
-                  color: Color(0x19000000),
-                  blurRadius: 6,
-                  offset: Offset(0, 4),
-                  spreadRadius: -1,
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Text(
-                'A',
-                style: TextStyle(
-                  color: Color(0xFFFCD106),
-                  fontSize: 24,
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
+          child: SizedBox(
+            height: 100, 
+            child: Image.asset(
+              'assets/images/Massa_Logo.png',
+              fit: BoxFit.contain, 
             ),
           ),
         ),
@@ -113,6 +87,7 @@ class LoginScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextFormField(
+          controller: viewModel.emailController, 
           decoration: InputDecoration(
             hintText: 'name@example.com',
             hintStyle: const TextStyle(
@@ -142,7 +117,6 @@ class LoginScreen extends StatelessWidget {
               ),
             ),
           ),
-          onChanged: viewModel.updateEmail,
         ),
         const SizedBox(height: 20),
         Row(
@@ -159,7 +133,6 @@ class LoginScreen extends StatelessWidget {
             ),
             GestureDetector(
               onTap: () {
-                // context now works perfectly! Use .push so they can go back easily.
                 context.push('/forgot-password');
               },
               child: const Text(
@@ -215,8 +188,8 @@ class LoginScreen extends StatelessWidget {
               height: 20,
               width: 20,
               child: Checkbox(
-                value: false,
-                onChanged: (bool? value) {},
+                value: viewModel.rememberMe,
+                onChanged: viewModel.toggleRememberMe,
                 side: const BorderSide(color: Color(0xFFD1D5DC)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(4),
@@ -240,7 +213,7 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  // We accept BuildContext here too
+  
   Widget _buildFooter(BuildContext context, LoginViewModel viewModel) {
     return Column(
       children: [
@@ -259,7 +232,14 @@ class LoginScreen extends StatelessWidget {
               elevation: 0,
             ),
             child: viewModel.isLoading
-                ? CircularProgressIndicator(color: Colors.white)
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.0,
+                    ),
+                  )
                 : const Text(
                     'Log In',
                     style: TextStyle(
@@ -287,7 +267,6 @@ class LoginScreen extends StatelessWidget {
               WidgetSpan(
                 child: GestureDetector(
                   onTap: () {
-                    // You can add context.push('/signup') here when you build it!
                     context.push('/signup');
                   },
                   child: const Text(
@@ -313,17 +292,11 @@ class LoginScreen extends StatelessWidget {
     try {
       await viewModel.login();
     } on FirebaseAuthException catch (e) {
-      if (!context.mounted) {
-        return;
-      }
-
+      if (!context.mounted) return;
       String message = _handleErrorMessage(e);
       _showSnackBar(context, message);
     } catch (e) {
-      if (!context.mounted) {
-        return;
-      }
-
+      if (!context.mounted) return;
       _showSnackBar(context, "An unexpected error has occurred");
     }
   }
@@ -331,8 +304,7 @@ class LoginScreen extends StatelessWidget {
   String _handleErrorMessage(FirebaseAuthException e) {
     switch(e.code) {
       case "invalid-credential": return "Wrong email or password";
-
-      default: return "";
+      default: return "Authentication failed. Please try again.";
     }
   }
 

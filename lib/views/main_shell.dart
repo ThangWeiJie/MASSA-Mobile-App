@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:massa/service/auth_service.dart';
+import 'package:massa/service/features/auth/auth_service.dart';
 import 'package:massa/tab_list.dart';
 import 'package:provider/provider.dart';
 
@@ -84,7 +84,13 @@ class MainShell extends StatelessWidget {
   int _calculatedSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;
 
-    final index = tabs.indexWhere((tab) => location == tab.path);
+    final index = tabs.indexWhere((tab) {
+      if (tab.path == '/') {
+        return location == '/';
+      }
+      
+      return location.startsWith(tab.path);
+    });
 
     return index < 0 ? 0 : index;
   }
