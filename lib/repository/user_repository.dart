@@ -33,6 +33,7 @@ class UserRepository {
       uuid: firebaseUser.uid,
       email: firebaseUser.email ?? "",
       fullName: "Loading...",
+      matricNumber: "Loading...", // <-- Added to prevent null errors while loading
       role: Role.user,
       createdOn: DateTime.now(),
     );
