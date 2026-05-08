@@ -14,14 +14,14 @@ import 'package:massa/view_models/features/events/create_event_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_details_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_registration_viewmodel.dart';
 // --- ADDED: Attendee List ViewModel Import ---
-import 'package:massa/view_models/features/events/attendee_list_viewmodel.dart'; 
+import 'package:massa/view_models/features/events/attendee_list_viewmodel.dart';
 import 'package:massa/views/exco_guard.dart';
 import 'package:massa/views/features/events/create_event_page.dart';
 import 'package:massa/views/features/events/event_details_page.dart';
 import 'package:massa/views/features/events/event_home_page.dart';
 import 'package:massa/views/features/events/event_registration_page.dart';
 // --- ADDED: Attendee List Page Import ---
-import 'package:massa/views/features/events/attendee_list_page.dart'; 
+import 'package:massa/views/features/events/attendee_list_page.dart';
 import 'package:massa/views/home_page_content.dart';
 import 'package:massa/views/main_shell.dart';
 import 'package:massa/views/features/authentication/forgot_password_screen.dart';
@@ -119,11 +119,11 @@ class AppRouter {
             path: eventPath,
             name: "Events Home Page",
             pageBuilder: (context, state) => NoTransitionPage(
-                child: EventHomePage(
-                  userRepository: context.read<UserRepository>(),
-                ),
+              child: EventHomePage(
+                userRepository: context.read<UserRepository>(),
               ),
             ),
+          ),
           GoRoute(
             path: '$eventPath/details/:eventId',
             builder: (context, state) {
