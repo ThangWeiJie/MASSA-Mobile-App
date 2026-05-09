@@ -17,6 +17,8 @@ class CreateEventViewModel extends ChangeNotifier {
   final startTimeController = TextEditingController();
   final endDateController = TextEditingController();
   final endTimeController = TextEditingController();
+  final locationController = TextEditingController();
+  final capacityController = TextEditingController();
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -84,8 +86,10 @@ class CreateEventViewModel extends ChangeNotifier {
 
   void _updateTextFields() {
     // Format Date: DD/MM/YYYY
-    startDateController.text = "${_startDate.day.toString().padLeft(2, '0')}/${_startDate.month.toString().padLeft(2, '0')}/${_startDate.year}";
-    endDateController.text = "${_endDate.day.toString().padLeft(2, '0')}/${_endDate.month.toString().padLeft(2, '0')}/${_endDate.year}";
+    startDateController.text =
+        "${_startDate.day.toString().padLeft(2, '0')}/${_startDate.month.toString().padLeft(2, '0')}/${_startDate.year}";
+    endDateController.text =
+        "${_endDate.day.toString().padLeft(2, '0')}/${_endDate.month.toString().padLeft(2, '0')}/${_endDate.year}";
 
     // Format Time: HH:MM AM/PM
     startTimeController.text = _formatTimeOfDay(_startTime);
@@ -113,6 +117,9 @@ class CreateEventViewModel extends ChangeNotifier {
         eventDescription: descriptionController.text,
         startDateTime: startDateTime,
         endDateTime: endDateTime,
+        location: locationController.text,
+        capacity: int.tryParse(capacityController.text) ?? 50,
+        registeredCount: 0,
       );
       return true;
     } catch (e) {
@@ -133,6 +140,8 @@ class CreateEventViewModel extends ChangeNotifier {
     endDateController.dispose();
     endTimeController.dispose();
     descriptionController.dispose();
+    locationController.dispose();
+    capacityController.dispose();
     super.dispose();
   }
 }

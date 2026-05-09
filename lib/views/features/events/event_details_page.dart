@@ -1,7 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-
+import 'package:massa/enums/role_enum.dart';
+import 'package:massa/models/user.dart';
 import '../../../view_models/features/events/event_details_viewmodel.dart';
 
 class EventDetailsPage extends StatelessWidget {
@@ -9,62 +12,495 @@ class EventDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the viewModel to rebuild when registration status changes
     final viewModel = context.watch<EventDetailsViewModel>();
+    final currentUser = context.read<UserModel?>();
+    final canManageDocumentation =
+        currentUser?.role == Role.admin || currentUser?.role == Role.exco;
+    final isAdmin = currentUser?.role == Role.admin;
 
-    if (viewModel.isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    // Loading State (Merged with MASSA orange theme)
+    if (viewModel.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: Colors.orange)),
+      );
+    }
 
     final event = viewModel.event;
-    if (event == null) return const Scaffold(body: Center(child: Text("Event not found")));
+    // Null Event State (Merged with better UX navigation)
+    if (event == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                "Event not found",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              TextButton(
+                onPressed: () => context.pop(),
+                child: const Text("Back to Programs"),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(title: Text(event.eventName)),
-      body: SingleChildScrollView(
-        child: Column(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.amber[50]!, Colors.orange[50]!, Colors.yellow[50]!],
+          ),
+        ),
+        child: Stack(
           children: [
-            // Big Date Header
-            Container(
-              width: double.infinity,
-              color: const Color(0xFF4A3780),
-              padding: const EdgeInsets.all(40),
-              child: Column(
-                children: [
-                  Text(
-                    DateFormat('MMMM d, y').format(event.startDateTime),
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    DateFormat('jm').format(event.startDateTime),
-                    style: const TextStyle(color: Colors.white70, fontSize: 18),
-                  ),
-                ],
+            // Background Decorative Icons
+            Positioned(
+              top: 100,
+              right: -20,
+              child: Icon(
+                Icons.wb_sunny_outlined,
+                size: 200,
+                color: Colors.amber[200]!.withOpacity(0.3),
               ),
             ),
 
-            // Description & Details
-            Padding(
-              padding: const EdgeInsets.all(24.0),
+            SafeArea(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("About this event", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  Text(event.description, style: const TextStyle(fontSize: 16, height: 1.5)),
-
-                  const SizedBox(height: 40),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () {}, // Join Logic
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A3780)),
-                      child: const Text("I'M GOING", style: TextStyle(color: Colors.white)),
+                  _buildTopNav(context),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          _buildMainCard(
+                            context,
+                            viewModel,
+                            canManageDocumentation,
+                            isAdmin,
+                          ),
+                          const SizedBox(height: 100),
+                        ],
+                      ),
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTopNav(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.brown,
+            ),
+            onPressed: () => context.pop(),
+          ),
+          const Text(
+            "Back to Programs",
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainCard(
+    BuildContext context,
+    EventDetailsViewModel viewModel,
+    bool canManageDocumentation,
+    bool isAdmin,
+  ) {
+    final event = viewModel.event!;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF59E0B), Color(0xFFEA580C), Color(0xFFDC2626)],
+        ),
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 20,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Container(
+        margin: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Section
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.amber[600]!, Colors.orange[700]!],
+                ),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildBeadworkRow(),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          event.eventName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      if (isAdmin) _buildAdminActions(context, viewModel),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInfoChip(
+                    Icons.people,
+                    "${event.registeredCount} / ${event.capacity} registered",
+                  ),
+                  const SizedBox(height: 20),
+                  _buildMetaIconRow(
+                    Icons.calendar_today,
+                    DateFormat(
+                      'EEEE, MMMM dd, yyyy',
+                    ).format(event.startDateTime),
+                  ),
+                  _buildMetaIconRow(
+                    Icons.access_time,
+                    DateFormat('jm').format(event.startDateTime),
+                  ),
+                  _buildMetaIconRow(Icons.map_outlined, event.location),
+                ],
+              ),
+            ),
+
+            // Content Section
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader("About this event"),
+                  const SizedBox(height: 12),
+                  Text(
+                    event.description,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[800],
+                      height: 1.6,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildActionButtons(
+                    context,
+                    viewModel,
+                    canManageDocumentation,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBeadworkRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        20,
+        (i) => Container(
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          width: 4,
+          height: 4,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: i % 3 == 0
+                ? Colors.yellow[300]
+                : i % 2 == 0
+                ? Colors.orange[300]
+                : Colors.white24,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white24,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetaIconRow(IconData icon, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Row(
+      children: [
+        Column(
+          children: List.generate(
+            3,
+            (i) => Container(
+              margin: const EdgeInsets.symmetric(vertical: 1),
+              width: 3,
+              height: 8,
+              decoration: BoxDecoration(
+                color: Colors.orange[700],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminActions(
+    BuildContext context,
+    EventDetailsViewModel viewModel,
+  ) {
+    return Row(
+      children: [
+        _buildCircleIconButton(
+          Icons.people_outline,
+          () => context.push('/events/details/${viewModel.eventId}/attendees'),
+        ),
+        const SizedBox(width: 8),
+        _buildCircleIconButton(
+          Icons.edit,
+          () => {}, // _showEditModal placeholder
+        ),
+        const SizedBox(width: 8),
+        _buildCircleIconButton(
+          Icons.delete_outline,
+          () => _showDeleteConfirm(context, viewModel),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCircleIconButton(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white24,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: Colors.white, size: 20),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(
+    BuildContext context,
+    EventDetailsViewModel viewModel,
+    bool canManageDocumentation,
+  ) {
+    final event = viewModel.event!;
+    final isRegistered = viewModel.isUserRegistered;
+    final isFull = event.registeredCount >= event.capacity;
+
+    return Column(
+      children: [
+        // Documentation management access for EXCO and Admin
+        if (canManageDocumentation) ...[
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.push('/events/details/${event.id}/documentation');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFCE1126),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.folder_open, color: Colors.white),
+              label: const Text(
+                'Manage Documentation',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Registration Button Logic
+        if (!canManageDocumentation)
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: viewModel.isActionLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.orange),
+                  )
+                : ElevatedButton(
+                    onPressed: (isFull && !isRegistered)
+                        ? null
+                        : () async {
+                            final registering = !viewModel.isUserRegistered;
+                            try {
+                              await viewModel.toggleRegistration();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      registering
+                                          ? "Registration successful!"
+                                          : "Successfully unregistered",
+                                    ),
+                                    backgroundColor: registering
+                                        ? Colors.green[700]
+                                        : Colors.red[700],
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(e.toString()),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isRegistered
+                          ? Colors.red[600]
+                          : Colors.orange[800],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 5,
+                    ),
+                    child: Text(
+                      isRegistered
+                          ? "Unregister from Event"
+                          : (isFull ? "Event Full" : "Register Now"),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+          ),
+      ],
+    );
+  }
+
+  void _showDeleteConfirm(
+    BuildContext context,
+    EventDetailsViewModel viewModel,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text("Delete Event?"),
+        content: const Text("Are you sure? This action cannot be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              await viewModel.deleteEvent();
+              if (context.mounted) context.pop();
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

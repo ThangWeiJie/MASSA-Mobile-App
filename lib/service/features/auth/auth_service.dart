@@ -36,6 +36,7 @@ class AuthService {
     required String email,
     required String password,
     required String name,
+    required String matricNumber, // <-- ADDED HERE
   }) async {
     try {
       UserCredential userCredential = await firebaseAuth.createUserWithEmailAndPassword(email: email, password: password);
@@ -45,6 +46,7 @@ class AuthService {
           email: email,
           role: Role.user,
           fullName: name,
+          matricNumber: matricNumber, // <-- ADDED HERE
           createdOn: DateTime.now()
       );
 
