@@ -40,6 +40,10 @@ class SignupViewModel extends ChangeNotifier {
       throw Exception("Passwords do not match");
     }
 
+    if (_password.length < 6) {
+      throw Exception("Password must be at least 6 characters");
+    }
+
     AuthEmailValidator.requireAllowedUtmEmail(_email);
 
     _isLoading = true;
