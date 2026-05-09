@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:massa/service/features/auth/auth_email_validator.dart';
 import 'package:massa/view_models/features/authentication/signup_viewmodel.dart';
 import 'package:provider/provider.dart';
 
@@ -68,6 +69,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (context.mounted) {
         context.go('/');
       }
+    } on AuthValidationException catch (e) {
+      if (context.mounted) {
+        _showSnackBar(context, e.message);
+      }
     } on FirebaseAuthException catch (e) {
       String message = _handleError(e);
       if (context.mounted) {
@@ -104,8 +109,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final viewModel = context.watch<SignupViewModel>();
 
     return Scaffold(
-      // The default behavior allows the screen to resize when the keyboard opens.
-      // Combining this with SingleChildScrollView makes the form perfectly scrollable.
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -116,7 +119,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         child: SafeArea(
           child: Center(
-            // Added SingleChildScrollView so the user can scroll when the keyboard is open
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(
                 horizontal: 16.0,
@@ -149,8 +151,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         Color dotColor = index % 3 == 0
             ? Colors.pink[400]!
             : index % 2 == 0
-            ? Colors.orange[500]!
-            : Colors.red[600]!;
+                ? Colors.orange[500]!
+                : Colors.red[600]!;
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
           width: 8,
@@ -178,13 +180,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.orange[50]!.withValues(alpha: 0.98),
-            Colors.red[50]!.withValues(alpha: 0.98),
+            Colors.orange[50]!.withOpacity(0.98),
+            Colors.red[50]!.withOpacity(0.98),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: Colors.orange[300]!.withValues(alpha: 0.6),
+          color: Colors.orange[300]!.withOpacity(0.6),
           width: 4,
         ),
         boxShadow: const [
@@ -197,7 +199,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
       child: Stack(
         children: [
-          // Hornbill Accent: Top Left
           Positioned(
             top: 12,
             left: 12,
@@ -215,7 +216,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
           ),
-          // Hornbill Accent: Top Right
           Positioned(
             top: 12,
             right: 12,
@@ -233,7 +233,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -272,7 +271,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: Colors.orange[200]!.withValues(alpha: 0.3),
+                  color: Colors.orange[200]!.withOpacity(0.3),
                   width: 6,
                 ),
                 boxShadow: const [
@@ -352,7 +351,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             Text(
               'Keep Up to Date with MASSA!',
               style: TextStyle(
-                color: Colors.orange[900]!.withValues(alpha: 0.8),
+                color: Colors.orange[900]!.withOpacity(0.8),
                 fontSize: 13,
               ),
             ),
@@ -556,8 +555,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
         const SizedBox(height: 24),
-
-        // --- ADDED BACK THE DIVIDER ---
         Row(
           children: const [
             Expanded(child: Divider(color: Color(0xFFD1D5DC), thickness: 1)),
@@ -576,8 +573,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ],
         ),
         const SizedBox(height: 20),
-
-        // --- ADDED BACK THE SOCIAL BUTTONS ---
         Row(
           children: [
             Expanded(
@@ -647,8 +642,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ],
         ),
         const SizedBox(height: 24),
-
-        // Sign In Link
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

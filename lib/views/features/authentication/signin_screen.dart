@@ -1,8 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:massa/service/features/auth/auth_email_validator.dart';
 import 'package:massa/view_models/features/authentication/login_viewmodel.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -466,6 +467,9 @@ class LoginScreen extends StatelessWidget {
   void _handleLogin(BuildContext context, LoginViewModel viewModel) async {
     try {
       await viewModel.login();
+    } on AuthValidationException catch (e) {
+      if (!context.mounted) return;
+      _showSnackBar(context, e.message);
     } on FirebaseAuthException catch (e) {
       if (!context.mounted) return;
       String message = _handleErrorMessage(e);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:massa/models/user.dart';
+import 'package:massa/repository/event_documentation_repository.dart';
 import 'package:massa/repository/user_repository.dart';
 import 'package:massa/service/features/auth/auth_notifier.dart';
 import 'package:massa/service/features/auth/auth_service.dart';
@@ -11,24 +12,24 @@ import 'package:massa/view_models/features/authentication/login_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/profile_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/signup_viewmodel.dart';
 import 'package:massa/view_models/features/events/create_event_viewmodel.dart';
+import 'package:massa/view_models/features/events/event_documentation_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_details_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_registration_viewmodel.dart';
-// --- ADDED: Attendee List ViewModel Import ---
 import 'package:massa/view_models/features/events/attendee_list_viewmodel.dart';
 import 'package:massa/views/exco_guard.dart';
-import 'package:massa/views/features/events/create_event_page.dart';
-import 'package:massa/views/features/events/event_details_page.dart';
-import 'package:massa/views/features/events/event_home_page.dart';
-import 'package:massa/views/features/events/event_registration_page.dart';
-// --- ADDED: Attendee List Page Import ---
-import 'package:massa/views/features/events/attendee_list_page.dart';
-import 'package:massa/views/home_page_content.dart';
-import 'package:massa/views/main_shell.dart';
 import 'package:massa/views/features/authentication/forgot_password_screen.dart';
-import 'package:massa/views/features/profile/profile_page.dart';
 import 'package:massa/views/features/authentication/signin_screen.dart';
 import 'package:massa/views/features/authentication/signup_screen.dart';
 import 'package:massa/views/features/authentication/verify_email.dart';
+import 'package:massa/views/features/events/create_event_page.dart';
+import 'package:massa/views/features/events/event_documentation_screen.dart';
+import 'package:massa/views/features/events/event_details_page.dart';
+import 'package:massa/views/features/events/event_home_page.dart';
+import 'package:massa/views/features/events/event_registration_page.dart';
+import 'package:massa/views/features/events/attendee_list_page.dart';
+import 'package:massa/views/home_page_content.dart';
+import 'package:massa/views/main_shell.dart';
+import 'package:massa/views/features/profile/profile_page.dart';
 import 'package:provider/provider.dart';
 
 class AppRouter {
@@ -82,7 +83,7 @@ class AppRouter {
         },
       ),
 
-      // --- Floating Create Event Route (Outside Shell to hide Navbar) ---
+      // --- Create Event (Floating Overlay with Fade Transition) ---
       GoRoute(
         path: "$eventPath/create",
         name: "Create Event Page",
@@ -103,7 +104,7 @@ class AppRouter {
         ),
       ),
 
-      // --- Main Application Shell (Routes with Navbar) ---
+      // --- Main Application Shell ---
       ShellRoute(
         builder: (routerContext, state, child) {
           return MainShell(child: child);
@@ -140,7 +141,25 @@ class AppRouter {
               );
             },
           ),
-          // --- ADDED: Attendee List Route ---
+          // --- Documentation Route ---
+          GoRoute(
+            path: '$eventPath/details/:eventId/documentation',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+              final currentUser = context.read<UserModel?>();
+              return ExcoGuard(
+                child: ChangeNotifierProvider(
+                  create: (_) => EventDocumentationViewModel(
+                    repository: context.read<EventDocumentationRepository>(),
+                    eventId: eventId,
+                    userName: currentUser?.fullName,
+                  ),
+                  child: const EventDocumentationScreen(),
+                ),
+              );
+            },
+          ),
+          // --- Attendee List Route ---
           GoRoute(
             path: '$eventPath/details/:eventId/attendees',
             builder: (context, state) {
@@ -156,6 +175,7 @@ class AppRouter {
               );
             },
           ),
+          // --- Registration Route ---
           GoRoute(
             path: '$eventPath/details/:eventId/register',
             builder: (context, state) {

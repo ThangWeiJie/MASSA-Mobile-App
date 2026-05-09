@@ -12,12 +12,14 @@ class EventDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // context.watch is essential here so the UI rebuilds when the 
-    // registration transaction completes and notifyListeners() is called.
+    // Watch the viewModel to rebuild when registration status changes
     final viewModel = context.watch<EventDetailsViewModel>();
     final currentUser = context.read<UserModel?>();
+    final canManageDocumentation =
+        currentUser?.role == Role.admin || currentUser?.role == Role.exco;
     final isAdmin = currentUser?.role == Role.admin;
 
+    // Loading State (Merged with MASSA orange theme)
     if (viewModel.isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator(color: Colors.orange)),
@@ -25,6 +27,7 @@ class EventDetailsPage extends StatelessWidget {
     }
 
     final event = viewModel.event;
+    // Null Event State (Merged with better UX navigation)
     if (event == null) {
       return Scaffold(
         body: Center(
@@ -56,7 +59,7 @@ class EventDetailsPage extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // Background Decorative Icons (Simulating the motifs)
+            // Background Decorative Icons
             Positioned(
               top: 100,
               right: -20,
@@ -76,10 +79,13 @@ class EventDetailsPage extends StatelessWidget {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          _buildMainCard(context, viewModel, isAdmin),
-                          const SizedBox(
-                            height: 100,
-                          ), // Space for bottom actions
+                          _buildMainCard(
+                            context,
+                            viewModel,
+                            canManageDocumentation,
+                            isAdmin,
+                          ),
+                          const SizedBox(height: 100),
                         ],
                       ),
                     ),
@@ -117,6 +123,7 @@ class EventDetailsPage extends StatelessWidget {
   Widget _buildMainCard(
     BuildContext context,
     EventDetailsViewModel viewModel,
+    bool canManageDocumentation,
     bool isAdmin,
   ) {
     final event = viewModel.event!;
@@ -136,7 +143,7 @@ class EventDetailsPage extends StatelessWidget {
         ],
       ),
       child: Container(
-        margin: const EdgeInsets.all(4), // Border thickness
+        margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(28),
@@ -144,7 +151,7 @@ class EventDetailsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gradient Header Section
+            // Header Section
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -199,7 +206,7 @@ class EventDetailsPage extends StatelessWidget {
               ),
             ),
 
-            // Description Section
+            // Content Section
             Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -216,7 +223,11 @@ class EventDetailsPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  _buildActionButtons(context, viewModel, isAdmin),
+                  _buildActionButtons(
+                    context,
+                    viewModel,
+                    canManageDocumentation,
+                  ),
                 ],
               ),
             ),
@@ -325,27 +336,29 @@ class EventDetailsPage extends StatelessWidget {
     );
   }
 
-Widget _buildAdminActions(BuildContext context, EventDetailsViewModel viewModel) {
-  return Row(
-    children: [
-      // NEW: View Attendees Button
-      _buildCircleIconButton(
-        Icons.people_outline, 
-        () => context.push('/events/details/${viewModel.eventId}/attendees'),
-      ),
-      const SizedBox(width: 8),
-      _buildCircleIconButton(
-        Icons.edit, 
-        () => _showEditModal(context, viewModel),
-      ),
-      const SizedBox(width: 8),
-      _buildCircleIconButton(
-        Icons.delete_outline, 
-        () => _showDeleteConfirm(context, viewModel),
-      ),
-    ],
-  );
-}
+  Widget _buildAdminActions(
+    BuildContext context,
+    EventDetailsViewModel viewModel,
+  ) {
+    return Row(
+      children: [
+        _buildCircleIconButton(
+          Icons.people_outline,
+          () => context.push('/events/details/${viewModel.eventId}/attendees'),
+        ),
+        const SizedBox(width: 8),
+        _buildCircleIconButton(
+          Icons.edit,
+          () => {}, // _showEditModal placeholder
+        ),
+        const SizedBox(width: 8),
+        _buildCircleIconButton(
+          Icons.delete_outline,
+          () => _showDeleteConfirm(context, viewModel),
+        ),
+      ],
+    );
+  }
 
   Widget _buildCircleIconButton(IconData icon, VoidCallback onTap) {
     return InkWell(
@@ -364,74 +377,103 @@ Widget _buildAdminActions(BuildContext context, EventDetailsViewModel viewModel)
   Widget _buildActionButtons(
     BuildContext context,
     EventDetailsViewModel viewModel,
-    bool isAdmin,
+    bool canManageDocumentation,
   ) {
-    if (isAdmin) return const SizedBox.shrink();
-
     final event = viewModel.event!;
     final isRegistered = viewModel.isUserRegistered;
     final isFull = event.registeredCount >= event.capacity;
 
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: viewModel.isActionLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.orange))
-          : ElevatedButton(
-              onPressed: (isFull && !isRegistered)
-                  ? null
-                  : () async {
-                      try {
-                        // This calls the transaction-based logic in your ViewModel
-                        await viewModel.toggleRegistration();
-                        
-                        if (context.mounted) {
-                          // The snackbar now uses the UPDATED state from the ViewModel
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                viewModel.isUserRegistered
-                                    ? "Registration successful!"
-                                    : "Successfully unregistered",
-                              ),
-                              backgroundColor: viewModel.isUserRegistered
-                                  ? Colors.green[700]
-                                  : Colors.red[700],
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(e.toString()),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    },
+    return Column(
+      children: [
+        // Documentation management access for EXCO and Admin
+        if (canManageDocumentation) ...[
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.push('/events/details/${event.id}/documentation');
+              },
               style: ElevatedButton.styleFrom(
-                backgroundColor: isRegistered
-                    ? Colors.red[600]
-                    : Colors.orange[800],
+                backgroundColor: const Color(0xFFCE1126),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                elevation: 5,
               ),
-              child: Text(
-                isRegistered
-                    ? "Unregister from Event"
-                    : (isFull ? "Event Full" : "Register Now"),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              icon: const Icon(Icons.folder_open, color: Colors.white),
+              label: const Text(
+                'Manage Documentation',
+                style: TextStyle(color: Colors.white),
               ),
             ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Registration Button Logic
+        if (!canManageDocumentation)
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: viewModel.isActionLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.orange),
+                  )
+                : ElevatedButton(
+                    onPressed: (isFull && !isRegistered)
+                        ? null
+                        : () async {
+                            final registering = !viewModel.isUserRegistered;
+                            try {
+                              await viewModel.toggleRegistration();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      registering
+                                          ? "Registration successful!"
+                                          : "Successfully unregistered",
+                                    ),
+                                    backgroundColor: registering
+                                        ? Colors.green[700]
+                                        : Colors.red[700],
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(e.toString()),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isRegistered
+                          ? Colors.red[600]
+                          : Colors.orange[800],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 5,
+                    ),
+                    child: Text(
+                      isRegistered
+                          ? "Unregister from Event"
+                          : (isFull ? "Event Full" : "Register Now"),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+          ),
+      ],
     );
   }
 
@@ -461,9 +503,5 @@ Widget _buildAdminActions(BuildContext context, EventDetailsViewModel viewModel)
         ],
       ),
     );
-  }
-
-  void _showEditModal(BuildContext context, EventDetailsViewModel viewModel) {
-    // Navigate to CreateEventPage in Edit Mode
   }
 }

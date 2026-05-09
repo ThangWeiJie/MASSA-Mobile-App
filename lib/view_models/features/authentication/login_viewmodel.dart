@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:massa/service/features/auth/auth_email_validator.dart';
 import 'package:massa/service/features/auth/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -44,6 +45,7 @@ class LoginViewModel extends ChangeNotifier {
   Future<void> login() async {
     final email = emailController.text.trim();
     if (email.isEmpty || _password.isEmpty) return;
+    AuthEmailValidator.requireAllowedUtmEmail(email);
 
     _isLoading = true;
     notifyListeners();
