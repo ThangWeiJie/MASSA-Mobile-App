@@ -7,9 +7,9 @@ class EventService {
   EventService({required this.eventRepository});
 
   Future<void> createEvent({
-    required String eventName, 
-    required String eventDescription, 
-    required DateTime startDateTime, 
+    required String eventName,
+    required String eventDescription,
+    required DateTime startDateTime,
     required DateTime endDateTime,
     required String location,
     required int capacity,
@@ -17,15 +17,15 @@ class EventService {
   }) async {
     try {
       await eventRepository.createEvent(
-          eventName: eventName,
-          eventDescription: eventDescription,
-          startDateTime: startDateTime,
-          endDateTime: endDateTime,
-          location: location,
-          capacity: capacity,
-          registeredCount: registeredCount
+        eventName: eventName,
+        eventDescription: eventDescription,
+        startDateTime: startDateTime,
+        endDateTime: endDateTime,
+        location: location,
+        capacity: capacity,
+        registeredCount: registeredCount,
       );
-    } catch(e) {
+    } catch (e) {
       rethrow;
     }
   }
@@ -47,11 +47,11 @@ class EventService {
   }
 
   // --- Registration Methods ---
-  
+
   Future<void> toggleEventRegistration({
-      required String eventId,
-      required String userId,
-      required bool isJoining,
+    required String eventId,
+    required String userId,
+    required bool isJoining,
   }) async {
     await eventRepository.toggleRegistrationTransaction(
       eventId: eventId,
@@ -61,7 +61,7 @@ class EventService {
   }
 
   Future<bool> isUserRegistered(String eventId, String userId) async {
-      return await eventRepository.checkUserRegistration(eventId, userId);
+    return await eventRepository.checkUserRegistration(eventId, userId);
   }
 
   // NEW: Fetches all event IDs a specific user has joined
@@ -91,9 +91,23 @@ class EventService {
     }
   }
 
-  // --- Participant Management ---
+  Stream<List<Event>> streamAllEvents() {
+    return eventRepository.streamAllEvents();
+  }
+
+  Stream<Event> streamEventById(String id) {
+    return eventRepository.streamEventById(id);
+  }
+
+  Stream<bool> streamUserRegistration(String eventId, String userId) {
+    return eventRepository.streamUserRegistration(eventId, userId);
+  }
 
   Stream<List<Map<String, dynamic>>> getEventParticipants(String eventId) {
     return eventRepository.getParticipantsStream(eventId);
+  }
+
+  Stream<List<String>> streamRegisteredEventIds(String userId) {
+    return eventRepository.streamRegisteredEventIds(userId);
   }
 }

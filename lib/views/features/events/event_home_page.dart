@@ -33,6 +33,8 @@ class EventHomePage extends StatelessWidget {
               final isAdminOrExco =
                   user?.role == Role.exco || user?.role == Role.admin;
 
+              context.read<EventViewModel>().updateCurrentUserId(user?.uuid);
+
               return Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 500),
@@ -436,18 +438,14 @@ class EventList extends StatelessWidget {
                       // Details Rows safely checking for null dates
                       _buildDetailRow(
                         Icons.calendar_month,
-                        event.startDateTime != null
-                            ? DateFormat(
-                                'EEEE, MMMM dd, yyyy',
-                              ).format(event.startDateTime)
-                            : "Date TBA",
+                        DateFormat(
+                          'EEEE, MMMM dd, yyyy',
+                        ).format(event.startDateTime),
                       ),
                       const SizedBox(height: 8),
                       _buildDetailRow(
                         Icons.access_time_filled,
-                        event.startDateTime != null
-                            ? DateFormat('jm').format(event.startDateTime)
-                            : "Time TBA",
+                        DateFormat('jm').format(event.startDateTime),
                       ),
                       const SizedBox(height: 8),
                       _buildDetailRow(Icons.location_on, location),

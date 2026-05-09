@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:massa/service/features/events/event_service.dart';
 import '../../../models/event.dart';
@@ -19,32 +21,49 @@ class EventDetailsViewModel extends ChangeNotifier {
   bool _isUserRegistered = false;
   bool get isUserRegistered => _isUserRegistered;
 
+  StreamSubscription<Event>? _eventSubscription;
+  StreamSubscription<bool>? _registrationSubscription;
+
   EventDetailsViewModel({
     required this.eventService,
     required this.eventId,
     this.currentUserId,
   }) {
-    fetchEventDetails();
+    _subscribeToEvent();
+    _subscribeToRegistration();
   }
 
-  Future<void> fetchEventDetails() async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-      _event = await eventService.getEventById(eventId);
-
-      if (currentUserId != null) {
-        _isUserRegistered = await eventService.isUserRegistered(
-          eventId,
-          currentUserId!,
+  void _subscribeToEvent() {
+    _eventSubscription = eventService
+        .streamEventById(eventId)
+        .listen(
+          (updatedEvent) {
+            _event = updatedEvent;
+            _isLoading = false;
+            notifyListeners();
+          },
+          onError: (error) {
+            debugPrint('Event details stream error: $error');
+            _isLoading = false;
+            notifyListeners();
+          },
         );
-      }
-    } catch (e) {
-      debugPrint("Error fetching event: $e");
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  }
+
+  void _subscribeToRegistration() {
+    if (currentUserId == null) return;
+
+    _registrationSubscription = eventService
+        .streamUserRegistration(eventId, currentUserId!)
+        .listen(
+          (isRegistered) {
+            _isUserRegistered = isRegistered;
+            notifyListeners();
+          },
+          onError: (error) {
+            debugPrint('Event registration stream error: $error');
+          },
+        );
   }
 
   Future<bool> updateEvent(Map<String, dynamic> data) async {
@@ -52,7 +71,6 @@ class EventDetailsViewModel extends ChangeNotifier {
       _isActionLoading = true;
       notifyListeners();
       await eventService.updateEvent(eventId, data);
-      await fetchEventDetails();
       return true;
     } catch (e) {
       return false;
@@ -76,29 +94,31 @@ class EventDetailsViewModel extends ChangeNotifier {
     }
   }
 
-  // --- UPDATED: Registration Toggle ---
   Future<void> toggleRegistration() async {
-    // If currentUserId is null, the code returns here and nothing happens
     if (_event == null || currentUserId == null || _isActionLoading) return;
 
     try {
       _isActionLoading = true;
       notifyListeners();
-
       await eventService.toggleEventRegistration(
         eventId: eventId,
         userId: currentUserId!,
         isJoining: !_isUserRegistered,
       );
-
-      // CRITICAL: Refresh details to update the UI count and button state
-      await fetchEventDetails();
+      return;
     } catch (e) {
       debugPrint("Registration error: $e");
-      rethrow; // Pass error to UI for snackbar
+      rethrow;
     } finally {
       _isActionLoading = false;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _eventSubscription?.cancel();
+    _registrationSubscription?.cancel();
+    super.dispose();
   }
 }
