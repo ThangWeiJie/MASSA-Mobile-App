@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:massa/models/user.dart';
+import 'package:massa/repository/event_documentation_repository.dart';
 import 'package:massa/repository/user_repository.dart';
 import 'package:massa/service/features/auth/auth_notifier.dart';
 import 'package:massa/service/features/auth/auth_service.dart';
@@ -10,19 +11,21 @@ import 'package:massa/view_models/features/authentication/login_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/profile_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/signup_viewmodel.dart';
 import 'package:massa/view_models/features/events/create_event_viewmodel.dart';
+import 'package:massa/view_models/features/events/event_documentation_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_details_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_viewmodel.dart';
 import 'package:massa/views/exco_guard.dart';
+import 'package:massa/views/features/authentication/forgot_password_screen.dart';
+import 'package:massa/views/features/authentication/signin_screen.dart';
+import 'package:massa/views/features/authentication/signup_screen.dart';
+import 'package:massa/views/features/authentication/verify_email.dart';
 import 'package:massa/views/features/events/create_event_page.dart';
+import 'package:massa/views/features/events/event_documentation_screen.dart';
 import 'package:massa/views/features/events/event_details_page.dart';
 import 'package:massa/views/features/events/event_home_page.dart';
 import 'package:massa/views/home_page_content.dart';
 import 'package:massa/views/main_shell.dart';
-import 'package:massa/views/features/authentication/forgot_password_screen.dart';
 import 'package:massa/views/features/profile/profile_page.dart';
-import 'package:massa/views/features/authentication/signin_screen.dart';
-import 'package:massa/views/features/authentication/signup_screen.dart';
-import 'package:massa/views/features/authentication/verify_email.dart';
 import 'package:provider/provider.dart';
 
 class AppRouter {
@@ -68,10 +71,9 @@ class AppRouter {
         name: "forgot-password",
         builder: (routeContext, state) {
           return ChangeNotifierProvider(
-            create: (providerContext) =>
-                ForgotPasswordViewmodel(
-                  authService: routeContext.read<AuthService>(),
-                ),
+            create: (providerContext) => ForgotPasswordViewmodel(
+              authService: routeContext.read<AuthService>(),
+            ),
             child: const ForgotPasswordScreen(),
           );
         },
@@ -91,46 +93,56 @@ class AppRouter {
           GoRoute(
             path: eventPath,
             name: "Events Home Page",
-            pageBuilder: (context, state) =>
-                NoTransitionPage(
-                  child: ChangeNotifierProvider(
-                    create: (_) => EventViewModel(context.read<EventService>()),
-                    child: EventHomePage(
-                      userRepository: context.read<UserRepository>(),
-                    ),
-                  ),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: ChangeNotifierProvider(
+                create: (_) => EventViewModel(context.read<EventService>()),
+                child: EventHomePage(
+                  userRepository: context.read<UserRepository>(),
                 ),
+              ),
+            ),
           ),
           GoRoute(
-              path: '$eventPath/details/:eventId',
-              builder: (context, state) {
-                final eventId = state.pathParameters['eventId']!;
+            path: '$eventPath/details/:eventId',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
 
-                return ChangeNotifierProvider(
-                  create: (_) =>
-                      EventDetailsViewModel(
-                          eventService: context.read<EventService>(),
-                          eventId: eventId
-                      ),
-                  child: const EventDetailsPage(),
-                );
-              }
+              return ChangeNotifierProvider(
+                create: (_) => EventDetailsViewModel(
+                  eventService: context.read<EventService>(),
+                  eventId: eventId,
+                ),
+                child: const EventDetailsPage(),
+              );
+            },
+          ),
+          GoRoute(
+            path: '$eventPath/details/:eventId/documentation',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+
+              return ChangeNotifierProvider(
+                create: (_) => EventDocumentationViewModel(
+                  repository: context.read<EventDocumentationRepository>(),
+                  eventId: eventId,
+                ),
+                child: const EventDocumentationScreen(),
+              );
+            },
           ),
           GoRoute(
             path: "$eventPath/create",
             name: "Create Event Page",
-            pageBuilder: (context, state) =>
-                NoTransitionPage(
-                  child: ExcoGuard(
-                    child: ChangeNotifierProvider(
-                      create: (providerContext) =>
-                          CreateEventViewModel(
-                            eventService: context.read<EventService>(),
-                          ),
-                      child: const CreateEventPage(),
-                    ),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: ExcoGuard(
+                child: ChangeNotifierProvider(
+                  create: (providerContext) => CreateEventViewModel(
+                    eventService: context.read<EventService>(),
                   ),
+                  child: const CreateEventPage(),
                 ),
+              ),
+            ),
           ),
           GoRoute(
             path: profilePath,
@@ -140,11 +152,10 @@ class AppRouter {
 
               return NoTransitionPage(
                 child: ChangeNotifierProvider(
-                  create: (context) =>
-                      ProfileViewModel(
-                        userRepo: context.read<UserRepository>(),
-                        userId: currentUser?.uuid ?? '',
-                      ),
+                  create: (context) => ProfileViewModel(
+                    userRepo: context.read<UserRepository>(),
+                    userId: currentUser?.uuid ?? '',
+                  ),
                   child: const ProfilePage(),
                 ),
               );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -11,10 +12,14 @@ class EventDetailsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<EventDetailsViewModel>();
 
-    if (viewModel.isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (viewModel.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     final event = viewModel.event;
-    if (event == null) return const Scaffold(body: Center(child: Text("Event not found")));
+    if (event == null) {
+      return const Scaffold(body: Center(child: Text("Event not found")));
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(event.eventName)),
@@ -30,7 +35,11 @@ class EventDetailsPage extends StatelessWidget {
                 children: [
                   Text(
                     DateFormat('MMMM d, y').format(event.startDateTime),
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     DateFormat('jm').format(event.startDateTime),
@@ -46,9 +55,15 @@ class EventDetailsPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("About this event", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "About this event",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 12),
-                  Text(event.description, style: const TextStyle(fontSize: 16, height: 1.5)),
+                  Text(
+                    event.description,
+                    style: const TextStyle(fontSize: 16, height: 1.5),
+                  ),
 
                   const SizedBox(height: 40),
                   SizedBox(
@@ -56,10 +71,33 @@ class EventDetailsPage extends StatelessWidget {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () {}, // Join Logic
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A3780)),
-                      child: const Text("I'M GOING", style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4A3780),
+                      ),
+                      child: const Text(
+                        "I'M GOING",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
-                  )
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        context.push('/events/details/${event.id}/documentation');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFCE1126),
+                      ),
+                      icon: const Icon(Icons.folder_open, color: Colors.white),
+                      label: const Text(
+                        'View Documentation (EXCO Test)',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
