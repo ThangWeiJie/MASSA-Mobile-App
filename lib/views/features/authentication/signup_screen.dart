@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:massa/service/features/auth/auth_email_validator.dart';
 import 'package:massa/view_models/features/authentication/signup_viewmodel.dart';
 import 'package:provider/provider.dart';
 
@@ -81,9 +82,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
     try {
       await viewModel.signup();
       // _showSnackBar("Sign up button clicked");
+    } on AuthValidationException catch (e) {
+      if (context.mounted) {
+        _showSnackBar(context, e.message);
+      }
     } on FirebaseAuthException catch (e) {
       String message = _handleError(e);
-      if (context.mounted) { _showSnackBar(context, message); }
+      if (context.mounted) {
+        _showSnackBar(context, message);
+      }
     }
     // Later you can replace this with Firebase sign up logic
   }

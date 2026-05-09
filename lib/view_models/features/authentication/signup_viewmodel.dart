@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:massa/service/features/auth/auth_email_validator.dart';
 import 'package:massa/service/features/auth/auth_service.dart';
 
 class SignupViewModel extends ChangeNotifier {
@@ -38,6 +39,8 @@ class SignupViewModel extends ChangeNotifier {
     if (_password != _confirmPassword) {
       throw Exception("Passwords do not match");
     }
+
+    AuthEmailValidator.requireAllowedUtmEmail(_email);
 
     _isLoading = true;
     notifyListeners();
