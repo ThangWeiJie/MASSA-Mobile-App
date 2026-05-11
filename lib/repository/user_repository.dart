@@ -8,7 +8,9 @@ class UserRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<UserModel?> get userStream {
-    return FirebaseAuth.instance.authStateChanges().asyncMap((firebaseUser) async {
+    return FirebaseAuth.instance.authStateChanges().asyncMap((
+      firebaseUser,
+    ) async {
       if (firebaseUser == null) return null;
 
       try {
@@ -55,9 +57,34 @@ class UserRepository {
       throw Exception("Member not found in database");
     }
 
-    return UserModel.fromMap(
-      doc.data() as Map<String, dynamic>,
-      doc.id
-    );
+    return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+  }
+
+  Future<void> updateUserProfile({
+    required String userId,
+    required String fullName,
+    required String phone,
+    required String department,
+  }) async {
+    await _firestore.collection('users').doc(userId).update({
+      'fullName': fullName,
+      'phone': phone,
+      'department': department,
+    });
+  }
+
+  Future<void> adminUpdateUserProfile({
+    required String userId,
+    required String fullName,
+    required String phone,
+    required String department,
+    required String role,
+  }) async {
+    await _firestore.collection('users').doc(userId).update({
+      'fullName': fullName,
+      'phone': phone,
+      'department': department,
+      'role': role,
+    });
   }
 }

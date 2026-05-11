@@ -1,109 +1,195 @@
 import 'package:flutter/material.dart';
 import 'package:massa/enums/role_enum.dart';
-import 'package:massa/models/user.dart';
 import 'package:massa/view_models/features/authentication/profile_viewmodel.dart';
+import 'package:massa/views/features/profile/edit_profile_page.dart';
 import 'package:provider/provider.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  final bool isAdminView;
+
+  const ProfilePage({super.key, this.isAdminView = false});
 
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<ProfileViewModel>();
-    final user = context.watch<UserModel?>();
+    final user = viewModel.user;
 
     if (viewModel.isLoading) {
-      return Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          const Center(
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 60,
-                  backgroundColor: Colors.indigo,
-                  child: Icon(Icons.person, size: 60, color: Colors.white),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.edit, size: 18, color: Colors.indigo),
-                  ),
-                )
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
+    if (user == null) {
+      return const Center(child: Text('User profile not found'));
+    }
 
-          // Section 2: Personal Information
-          _buildSectionHeader("Personal Information"),
-          const SizedBox(height: 10),
-          _infoRow(Icons.person_outline, "Full Name", user?.fullName ?? ''),
-          _infoRow(Icons.email_outlined, "Email", viewModel.user?.email ?? ''),
-
-          const SizedBox(height: 30),
-
-          _buildSectionHeader("Membership Status"),
-          const SizedBox(height: 10),
-          _infoRow(Icons.card_membership, "Member ID", "Temp ID"),
-          _infoRow(Icons.verified_user_outlined, "Role", viewModel.user?.role.name ?? Role.user.name),
-          _infoRow(Icons.calendar_month, "Joined on", viewModel.user?.memberSince.toString().split(' ').first ?? ''),
-
-          const SizedBox(height: 40),
-
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text(
-                  "Update Profile",
-                  style: TextStyle(color: Colors.white, fontSize: 16)
-              ),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.indigo),
-      ),
-    );
-  }
-
-  Widget _infoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.grey[600], size: 22),
-          const SizedBox(width: 15),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFFBF0),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
             children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  const CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Color(0xFFE5E7EB),
+                    child: Icon(Icons.person, size: 50, color: Colors.white),
+                  ),
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: const Color(0xFFCE1126),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              Text(
+                user.fullName,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFCD106),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  user.role == Role.admin ? 'Admin' : 'Student',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x14000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    _profileInfo('Full Name', user.fullName),
+                    _divider(),
+                    _profileInfo('Email Address', user.email),
+                    _divider(),
+                    _profileInfo('Phone Number', user.phone),
+                    _divider(),
+                    _profileInfo('Faculty / Department', user.department),
+                    _divider(),
+                    _profileInfo('Member ID', user.uuid),
+                    _divider(),
+                    _profileInfo(
+                      'Joined Date',
+                      user.memberSince.toString().split(' ').first,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChangeNotifierProvider.value(
+                          value: viewModel,
+                          child: EditProfilePage(isAdminEdit: isAdminView),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.edit, color: Colors.white, size: 18),
+                  label: const Text(
+                    'Edit Profile',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFCE1126),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  Widget _profileInfo(String label, String value) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              value.isEmpty ? '-' : value,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _divider() {
+    return const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB));
   }
 }

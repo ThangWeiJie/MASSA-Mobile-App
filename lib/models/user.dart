@@ -8,6 +8,8 @@ class UserModel {
   final DateTime createdOn;
   final String fullName;
   final DateTime? memberSince;
+  final String phone;
+  final String department;
 
   String get getUUID => uuid;
 
@@ -18,16 +20,24 @@ class UserModel {
     required this.fullName,
     required this.createdOn,
     this.memberSince,
+    this.phone = '',
+    this.department = '',
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String id) {
     return UserModel(
       uuid: id,
-      email: data['email'],
-      role: Role.values.byName(data['role']),
-      fullName: data['fullName'],
-      memberSince: data['memberSince'] != null ? (data['memberSince'] as Timestamp).toDate() : null,
-      createdOn: (data['createdOn'] as Timestamp).toDate(),
+      email: data['email'] ?? '',
+      role: Role.values.byName(data['role'] ?? Role.user.name),
+      fullName: data['fullName'] ?? '',
+      phone: data['phone'] ?? '',
+      department: data['department'] ?? '',
+      memberSince: data['memberSince'] != null
+          ? (data['memberSince'] as Timestamp).toDate()
+          : null,
+      createdOn: data['createdOn'] != null
+          ? (data['createdOn'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
 
@@ -38,6 +48,8 @@ class UserModel {
       'role': role.name,
       'createdOn': createdOn,
       'fullName': fullName,
+      'phone': phone,
+      'department': department,
       'memberSince': memberSince,
     };
   }
