@@ -8,23 +8,31 @@ class UserRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<UserModel?> get userStream {
-    return FirebaseAuth.instance.authStateChanges().asyncMap((firebaseUser) async {
-      if (firebaseUser == null) return null;
+    return FirebaseAuth.instance.authStateChanges().asyncExpand((firebaseUser) {
+      if (firebaseUser == null) return Stream.value(null);
 
-      try {
-        return await getUser(firebaseUser.uid);
-      } on FirebaseException catch (e) {
-        if (e.code == 'not-found') {
-          return _loadingUser(firebaseUser);
-        }
+      return _firestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .snapshots()
+          .map((doc) {
+            if (!doc.exists) {
+              return _loadingUser(firebaseUser);
+            }
+            return UserModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              doc.id,
+            );
+          });
+    });
+  }
 
-        return null;
-      } catch (e) {
-        if (e.toString().contains("not found")) {
-          return _loadingUser(firebaseUser);
-        }
-        rethrow;
+  Stream<UserModel> getUserStream(String uid) {
+    return _firestore.collection('users').doc(uid).snapshots().map((doc) {
+      if (!doc.exists) {
+        throw Exception('User not found');
       }
+      return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
     });
   }
 
@@ -33,6 +41,7 @@ class UserRepository {
       uuid: firebaseUser.uid,
       email: firebaseUser.email ?? "",
       fullName: "Loading...",
+      matricNumber: "Loading...",
       role: Role.user,
       createdOn: DateTime.now(),
     );
@@ -55,9 +64,6 @@ class UserRepository {
       throw Exception("Member not found in database");
     }
 
-    return UserModel.fromMap(
-      doc.data() as Map<String, dynamic>,
-      doc.id
-    );
+    return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
   }
 }

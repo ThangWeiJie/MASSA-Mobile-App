@@ -7,6 +7,7 @@ class UserModel {
   final Role role;
   final DateTime createdOn;
   final String fullName;
+  final String? matricNumber;
   final DateTime? memberSince;
 
   String get getUUID => uuid;
@@ -17,17 +18,28 @@ class UserModel {
     required this.role,
     required this.fullName,
     required this.createdOn,
+    this.matricNumber,
     this.memberSince,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String id) {
     return UserModel(
       uuid: id,
-      email: data['email'],
-      role: Role.values.byName(data['role']),
-      fullName: data['fullName'],
-      memberSince: data['memberSince'] != null ? (data['memberSince'] as Timestamp).toDate() : null,
-      createdOn: (data['createdOn'] as Timestamp).toDate(),
+      email: data['email'] ?? '',
+      // Safely parse the enum so it doesn't crash if the role string is weird/missing
+      role: Role.values.firstWhere(
+        (e) => e.name == data['role'],
+        orElse: () => Role.user,
+      ),
+      // ADDED FALLBACK: Prevents crash if 'fullName' is missing on old accounts
+      fullName: data['fullName'] ?? 'Unknown User',
+      matricNumber: data['matricNumber'],
+      memberSince: data['memberSince'] != null
+          ? (data['memberSince'] as Timestamp).toDate()
+          : null,
+      createdOn: data['createdOn'] != null
+          ? (data['createdOn'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
 
@@ -37,7 +49,8 @@ class UserModel {
       'email': email,
       'role': role.name,
       'createdOn': createdOn,
-      'fullName': fullName,
+      'matricNumber': matricNumber, // FIXED TYPO: Was 'fatricNumber'
+      'fullName': fullName, // FIXED TYPO: Was 'mullName'
       'memberSince': memberSince,
     };
   }

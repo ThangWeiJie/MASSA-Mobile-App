@@ -12,23 +12,150 @@ class ForgotPasswordScreen extends StatelessWidget {
     final viewModel = context.watch<ForgotPasswordViewmodel>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFBF0),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 48.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            // Centered for this screen
-            children: [
-              const SizedBox(height: 60),
-              _buildHeader(),
-              const SizedBox(height: 40),
-              _buildForm(context, viewModel),
-              const SizedBox(height: 60),
-              _buildFooter(context, viewModel),
-            ],
+      // Prevents the layout from breaking/overflowing when the keyboard pops up on an unscrollable screen
+      resizeToAvoidBottomInset: false,
+      body: Container(
+        // Main Background Gradient (Emerald/Green/Teal Theme)
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.teal[700]!, Colors.green[800]!, Colors.teal[900]!],
           ),
         ),
+        child: SafeArea(
+          child: Center(
+            // Unscrollable Padding
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 450),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildDecorativeDots(),
+                    const SizedBox(height: 16),
+                    _buildMainCard(context, viewModel),
+                    const SizedBox(height: 16),
+                    _buildDecorativeDots(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDecorativeDots() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(15, (index) {
+        Color dotColor = index % 3 == 0
+            ? Colors.tealAccent[400]!
+            : index % 2 == 0
+            ? Colors.teal[400]!
+            : Colors.green[500]!;
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: dotColor,
+            shape: BoxShape.circle,
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildMainCard(
+    BuildContext context,
+    ForgotPasswordViewmodel viewModel,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.teal[50]!.withValues(alpha: 0.98),
+            Colors.green[50]!.withValues(alpha: 0.98),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.teal[300]!.withValues(alpha: 0.6),
+          width: 4,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black45,
+            blurRadius: 24,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Hornbill Accent: Top Left
+          Positioned(
+            top: 12,
+            left: 12,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Colors.teal[600]!, width: 4),
+                  left: BorderSide(color: Colors.teal[600]!, width: 4),
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          // Hornbill Accent: Top Right
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Colors.teal[600]!, width: 4),
+                  right: BorderSide(color: Colors.teal[600]!, width: 4),
+                ),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(8),
+                ),
+              ),
+            ),
+          ),
+
+          // Main Content Area
+          Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 32),
+                _buildForm(context, viewModel),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -36,53 +163,117 @@ class ForgotPasswordScreen extends StatelessWidget {
   Widget _buildHeader() {
     return Column(
       children: [
-        // Question Mark Icon Graphic
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: const Color(0xFFCE1126).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Center(
-            child: Text(
-              '?',
-              style: TextStyle(
-                color: Color(0xFFCE1126), 
-                fontSize: 42,
-                fontFamily: 'Arial',
-                fontWeight: FontWeight.w700,
+        Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.teal[600]!,
+                    Colors.green[600]!,
+                    Colors.teal[800]!,
+                  ],
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.teal[200]!.withValues(alpha: 0.3),
+                  width: 8,
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 16,
+                    offset: Offset(0, 8),
+                  ),
+                ],
               ),
+              child: const Icon(
+                Icons.vpn_key_rounded,
+                size: 42,
+                color: Colors.white,
+              ),
+            ),
+            Positioned(
+              top: -8,
+              right: -8,
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: Colors.tealAccent[400],
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 4),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -8,
+              left: -8,
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: Colors.green[400],
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 4),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        ShaderMask(
+          shaderCallback: (bounds) => LinearGradient(
+            colors: [Colors.teal[800]!, Colors.green[700]!, Colors.teal[800]!],
+          ).createShader(bounds),
+          child: const Text(
+            'Reset Password',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
-        const SizedBox(height: 32),
-
-        // Title
-        const Text(
-          'Forgot Password',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 30,
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w500,
-            height: 1.20,
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Subtitle
-        const Text(
-          'Enter your email to reset your password',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Color(0xFF666666),
-            fontSize: 16,
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w400,
-            height: 1.50,
-          ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 32,
+              height: 2,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.transparent, Colors.teal[600]!],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Enter your email',
+              style: TextStyle(color: Colors.black54, fontSize: 14),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 32,
+              height: 2,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.teal[600]!, Colors.transparent],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -90,102 +281,131 @@ class ForgotPasswordScreen extends StatelessWidget {
 
   Widget _buildForm(BuildContext context, ForgotPasswordViewmodel viewModel) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Real Email Input Field
+        const Text(
+          'Email Address',
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
         TextFormField(
           keyboardType: TextInputType.emailAddress,
+          onChanged: viewModel.updateEmail,
           decoration: InputDecoration(
-            hintText: 'Enter your email',
-            hintStyle: const TextStyle(
-              color: Color(0x7F0A0A0A),
-              fontSize: 16,
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w400,
-            ),
+            hintText: 'you@example.com',
+            hintStyle: const TextStyle(color: Colors.black38, fontSize: 15),
             prefixIcon: const Icon(
-              Icons.email_outlined,
-              color: Color(0x7F0A0A0A),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 18,
+              Icons.mail_outline,
+              color: Colors.black38,
+              size: 20,
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Colors.grey[50],
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFE5E7EB),
-                width: 1.18,
-              ),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[200]!),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFCE1126),
-                width: 1.5,
-              ),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.teal[500]!, width: 2),
             ),
           ),
-          onChanged: viewModel.updateEmail,
         ),
         const SizedBox(height: 24),
 
-        // Real Submit Button
-        SizedBox(
+        // Submit Button
+        Container(
           width: double.infinity,
-          height: 56,
+          height: 52,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.teal[600]!,
+                Colors.green[600]!,
+                Colors.teal[700]!,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
           child: ElevatedButton(
             onPressed: viewModel.isLoading
                 ? null
                 : () => _handleResetPassword(context, viewModel),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFCE1126),
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
               ),
-              elevation: 4,
-              shadowColor: const Color(0x3FCE1126),
             ),
             child: viewModel.isLoading
-                ? CircularProgressIndicator(color: Colors.white)
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.0,
+                    ),
+                  )
                 : const Text(
                     'Send Reset Link',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Footer (Back to Login)
+        Center(
+          child: GestureDetector(
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/signin');
+              }
+            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.arrow_back, color: Colors.teal[700], size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Back to login',
+                  style: TextStyle(
+                    color: Colors.teal[700],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFooter(BuildContext context, ForgotPasswordViewmodel viewModel) {
-    return GestureDetector(
-      onTap: () {
-        // context.pop() safely returns the user to the previous screen (Login)
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go('/signin'); // Fallback just in case
-        }
-      },
-      child: const Text(
-        'Back to Login',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Color(0xFFCE1126),
-          fontSize: 16,
-          fontFamily: 'Inter',
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
+  // --- Logic Remains Unchanged ---
 
   Future<void> _handleResetPassword(
     BuildContext context,
@@ -197,12 +417,25 @@ class ForgotPasswordScreen extends StatelessWidget {
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("A reset link has been sent if an account exists with the email.")),
+        SnackBar(
+          content: const Text(
+            "A reset link has been sent if an account exists with the email.",
+          ),
+          backgroundColor:
+              Colors.teal[700], // Styled to match the success theme
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } on FirebaseAuthException catch (e) {
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("$e"),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 }
