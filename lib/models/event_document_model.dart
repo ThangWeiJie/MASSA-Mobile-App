@@ -39,8 +39,8 @@ class EventDocumentModel {
       uploadedAt: uploadedAt is Timestamp
           ? uploadedAt.toDate()
           : uploadedAt is DateTime
-              ? uploadedAt
-              : DateTime.fromMillisecondsSinceEpoch(0),
+          ? uploadedAt
+          : DateTime.fromMillisecondsSinceEpoch(0),
       parentFolderId: map['parentFolderId'] as String?,
       isFolder: map['isFolder'] as bool? ?? false,
     );

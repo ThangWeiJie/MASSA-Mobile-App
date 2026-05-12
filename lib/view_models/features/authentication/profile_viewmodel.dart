@@ -10,7 +10,7 @@ class ProfileViewModel extends ChangeNotifier {
 
   UserModel? _userModel;
   bool _isLoading = true;
-  bool get isLoading => _isLoading;
+  bool _disposed = false;
 
   StreamSubscription<UserModel>? _userSubscription;
 
@@ -25,11 +25,6 @@ class ProfileViewModel extends ChangeNotifier {
 
   UserModel? get user => _userModel;
   bool get isLoading => _isLoading;
-
-  ProfileViewModel({required UserRepository userRepo, required this.userId})
-    : _userRepository = userRepo {
-    fetchUser();
-  }
 
   void _listenToUser() {
     _userSubscription = _userRepository
@@ -46,6 +41,21 @@ class ProfileViewModel extends ChangeNotifier {
             notifyListeners();
           },
         );
+  }
+
+  Future<void> fetchUser() async {
+    if (userId.isEmpty) {
+      _setLoading(false);
+      return;
+    }
+
+    try {
+      _userModel = await _userRepository.getUser(userId);
+    } catch (error) {
+      debugPrint('Fetch profile error: $error');
+    } finally {
+      _setLoading(false);
+    }
   }
 
   Future<void> updateProfile({
@@ -104,5 +114,12 @@ class ProfileViewModel extends ChangeNotifier {
     if (_disposed) return;
     _isLoading = value;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _userSubscription?.cancel();
+    super.dispose();
   }
 }
