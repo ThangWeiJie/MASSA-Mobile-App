@@ -66,4 +66,32 @@ class UserRepository {
 
     return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
   }
+
+  Future<void> updateUserProfile({
+    required String userId,
+    required String fullName,
+    required String phone,
+    required String department,
+  }) async {
+    await _firestore.collection('users').doc(userId).update({
+      'fullName': fullName,
+      'phone': phone,
+      'department': department,
+    });
+  }
+
+  Future<void> adminUpdateUserProfile({
+    required String userId,
+    required String fullName,
+    required String phone,
+    required String department,
+    required String role,
+  }) async {
+    await _firestore.collection('users').doc(userId).update({
+      'fullName': fullName,
+      'phone': phone,
+      'department': department,
+      'role': role,
+    });
+  }
 }

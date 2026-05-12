@@ -24,6 +24,12 @@ class ProfileViewModel extends ChangeNotifier {
   }
 
   UserModel? get user => _userModel;
+  bool get isLoading => _isLoading;
+
+  ProfileViewModel({required UserRepository userRepo, required this.userId})
+    : _userRepository = userRepo {
+    fetchUser();
+  }
 
   void _listenToUser() {
     _userSubscription = _userRepository
@@ -42,9 +48,61 @@ class ProfileViewModel extends ChangeNotifier {
         );
   }
 
-  @override
-  void dispose() {
-    _userSubscription?.cancel();
-    super.dispose();
+  Future<void> updateProfile({
+    required String fullName,
+    required String phone,
+    required String department,
+  }) async {
+    if (_userModel == null) return;
+
+    _setLoading(true);
+
+    try {
+      await _userRepository.updateUserProfile(
+        userId: userId,
+        fullName: fullName,
+        phone: phone,
+        department: department,
+      );
+
+      await fetchUser();
+    } finally {
+      if (!_disposed) {
+        _setLoading(false);
+      }
+    }
+  }
+
+  Future<void> adminUpdateUserProfile({
+    required String fullName,
+    required String phone,
+    required String department,
+    required String role,
+  }) async {
+    if (_userModel == null) return;
+
+    _setLoading(true);
+
+    try {
+      await _userRepository.adminUpdateUserProfile(
+        userId: userId,
+        fullName: fullName,
+        phone: phone,
+        department: department,
+        role: role,
+      );
+
+      await fetchUser();
+    } finally {
+      if (!_disposed) {
+        _setLoading(false);
+      }
+    }
+  }
+
+  void _setLoading(bool value) {
+    if (_disposed) return;
+    _isLoading = value;
+    notifyListeners();
   }
 }
