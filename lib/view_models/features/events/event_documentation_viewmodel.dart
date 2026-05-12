@@ -6,10 +6,12 @@ import 'package:massa/repository/event_documentation_repository.dart';
 class EventDocumentationViewModel extends ChangeNotifier {
   final EventDocumentationRepository repository;
   final String eventId;
+  final String? userName;
 
   EventDocumentationViewModel({
     required this.repository,
     required this.eventId,
+    this.userName,
   });
 
   bool _isLoading = false;
@@ -28,9 +30,7 @@ class EventDocumentationViewModel extends ChangeNotifier {
     return repository.streamDocuments(eventId, parentFolderId: _currentFolderId);
   }
 
-  Future<bool> pickAndUploadDocument({
-    String uploadedBy = 'EXCO Test User',
-  }) async {
+  Future<bool> pickAndUploadDocument() async {
     _setLoading(true);
     _errorMessage = null;
 
@@ -63,7 +63,7 @@ class EventDocumentationViewModel extends ChangeNotifier {
         fileUrl: uploadResult.downloadUrl,
         fileExtension: fileExtension,
         storagePath: uploadResult.storagePath,
-        uploadedBy: uploadedBy,
+        uploadedBy: userName ?? 'Unknown EXCO',
         uploadedAt: DateTime.now(),
         parentFolderId: _currentFolderId,
       );
@@ -93,7 +93,7 @@ class EventDocumentationViewModel extends ChangeNotifier {
       await repository.createFolder(
         eventId: eventId,
         folderName: folderName,
-        uploadedBy: uploadedBy,
+        uploadedBy: userName ?? 'Unknown EXCO',
         parentFolderId: _currentFolderId,
       );
 

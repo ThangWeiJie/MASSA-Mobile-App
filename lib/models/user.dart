@@ -7,6 +7,7 @@ class UserModel {
   final Role role;
   final DateTime createdOn;
   final String fullName;
+  final String? matricNumber;
   final DateTime? memberSince;
   final String phone;
   final String department;
@@ -19,6 +20,7 @@ class UserModel {
     required this.role,
     required this.fullName,
     required this.createdOn,
+    this.matricNumber,
     this.memberSince,
     this.phone = '',
     this.department = '',

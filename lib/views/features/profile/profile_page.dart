@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:massa/enums/role_enum.dart';
 import 'package:massa/view_models/features/authentication/profile_viewmodel.dart';
 import 'package:massa/views/features/profile/edit_profile_page.dart';
+import 'package:go_router/go_router.dart';
+import 'package:massa/service/features/auth/auth_service.dart';
 import 'package:provider/provider.dart';
+import 'package:massa/view_models/features/authentication/profile_viewmodel.dart';
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
 
 class ProfilePage extends StatelessWidget {
   final bool isAdminView;
