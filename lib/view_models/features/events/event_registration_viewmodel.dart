@@ -48,6 +48,7 @@ class EventRegistrationViewModel extends ChangeNotifier {
     if (_isRegistered || _event == null) return;
 
     _isRegistering = true;
+    _errorMessage = null;
     notifyListeners();
 
     await Future.delayed(const Duration(milliseconds: 350));

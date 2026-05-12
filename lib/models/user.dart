@@ -32,6 +32,7 @@ class UserModel {
       email: data['email'] ?? '',
       role: Role.values.byName(data['role'] ?? Role.user.name),
       fullName: data['fullName'] ?? '',
+      matricNumber: data['matricNumber'] ?? '',
       phone: data['phone'] ?? '',
       department: data['department'] ?? '',
       memberSince: data['memberSince'] != null
@@ -50,6 +51,7 @@ class UserModel {
       'role': role.name,
       'createdOn': createdOn,
       'fullName': fullName,
+      'matricNumber': matricNumber,
       'phone': phone,
       'department': department,
       'memberSince': memberSince,

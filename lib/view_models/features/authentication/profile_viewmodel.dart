@@ -12,6 +12,8 @@ class ProfileViewModel extends ChangeNotifier {
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
+  bool _isDisposed = false;
+
   StreamSubscription<UserModel>? _userSubscription;
 
   ProfileViewModel({required UserRepository userRepo, required this.userId})
@@ -24,12 +26,6 @@ class ProfileViewModel extends ChangeNotifier {
   }
 
   UserModel? get user => _userModel;
-  bool get isLoading => _isLoading;
-
-  ProfileViewModel({required UserRepository userRepo, required this.userId})
-    : _userRepository = userRepo {
-    fetchUser();
-  }
 
   void _listenToUser() {
     _userSubscription = _userRepository
@@ -65,9 +61,8 @@ class ProfileViewModel extends ChangeNotifier {
         department: department,
       );
 
-      await fetchUser();
     } finally {
-      if (!_disposed) {
+      if (!_isDisposed) {
         _setLoading(false);
       }
     }
@@ -91,18 +86,27 @@ class ProfileViewModel extends ChangeNotifier {
         department: department,
         role: role,
       );
-
-      await fetchUser();
     } finally {
-      if (!_disposed) {
+      if (_isDisposed) {
         _setLoading(false);
       }
     }
   }
 
   void _setLoading(bool value) {
-    if (_disposed) return;
+    if (_isDisposed || _isLoading == value) return;
     _isLoading = value;
-    notifyListeners();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isDisposed) {
+        notifyListeners();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _userSubscription?.cancel();
+    super.dispose();
   }
 }

@@ -84,39 +84,61 @@ class EventRepository {
     final participantRef = eventRef.collection('participants').doc(userId);
     final userRef = _firestore.collection('users').doc(userId);
 
-    return _firestore.runTransaction((transaction) async {
-      // 1. READ: Get Event Data and User Data
-      DocumentSnapshot eventSnap = await transaction.get(eventRef);
-      DocumentSnapshot userSnap = await transaction.get(userRef);
+    try {
+      await _firestore.runTransaction((transaction) async {
+        try {
+          // 1. READ: Get Event Data and User Data
+          DocumentSnapshot eventSnap = await transaction.get(eventRef);
+          DocumentSnapshot userSnap = await transaction.get(userRef);
+          final participantSnap = await transaction.get(participantRef);
 
-      if (!eventSnap.exists) throw Exception("Event not found");
-      if (!userSnap.exists) throw Exception("User profile not found");
+          if (!eventSnap.exists) throw Exception("Event not found");
+          if (!userSnap.exists) throw Exception("User profile not found");
 
-      int currentCount = eventSnap.get('registeredCount') ?? 0;
-      int capacity = eventSnap.get('capacity') ?? 100;
+          final eventData = eventSnap.data() as Map<String, dynamic>;
+          final userData = userSnap.data() as Map<String, dynamic>;
 
-      // Extract name and matric number from the users collection
-      String fullName = userSnap.get('fullName') ?? 'Unknown Student';
-      String matricNumber = userSnap.get('matricNumber') ?? 'N/A';
+          int currentCount = (eventData['registeredCount'] as num? ?? 0)
+              .toInt();
+          int capacity = (eventData['capacity'] as num? ?? 100).toInt();
+          bool alreadyRegistered = participantSnap.exists;
 
-      // 2. LOGIC & WRITE
-      if (isRegistering) {
-        if (currentCount >= capacity) throw Exception("Event is full!");
+          // Extract name and matric number from the users collection
+          String fullName = userSnap.get('fullName') ?? 'Unknown Student';
+          String matricNumber = userSnap.get('matricNumber') ?? 'N/A';
 
-        transaction.update(eventRef, {'registeredCount': currentCount + 1});
-        transaction.set(participantRef, {
-          'userId': userId,
-          'fullName': fullName,
-          'matricNumber': matricNumber,
-          'joinedAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        transaction.update(eventRef, {
-          'registeredCount': (currentCount - 1).clamp(0, capacity),
-        });
-        transaction.delete(participantRef);
-      }
-    });
+          // 2. LOGIC & WRITE
+          if (isRegistering) {
+            if (alreadyRegistered) return;
+
+            if (currentCount >= capacity) throw Exception("Event is full!");
+
+            transaction.update(eventRef, {'registeredCount': currentCount + 1});
+            transaction.set(participantRef, {
+              'userId': userId,
+              'fullName': userData['fullName'] ?? 'Unknown Student',
+              'matricNumber': userData['matricNumber'] ?? 'N/A',
+              'joinedAt': FieldValue.serverTimestamp(),
+            });
+          } else {
+            if (!alreadyRegistered) return;
+
+            transaction.update(eventRef, {
+              'registeredCount': (currentCount - 1).clamp(0, capacity),
+            });
+            transaction.delete(participantRef);
+          }
+        } catch (e, stack) {
+          print(e.toString());
+          print(stack);
+        }
+      });
+    } on Exception catch (e) {
+      final message = e.toString().contains('converted Future')
+          ? 'Transaction failed: a condition check failed inside the transaction.'
+          : e.toString();
+      rethrow;
+    }
   }
 
   Future<bool> checkUserRegistration(String eventId, String userId) async {
