@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:massa/models/user.dart';
@@ -8,23 +10,54 @@ class UserRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<UserModel?> get userStream {
-    return FirebaseAuth.instance.authStateChanges().asyncExpand((firebaseUser) {
-      if (firebaseUser == null) return Stream.value(null);
+    late StreamController<UserModel?> controller;
+    StreamSubscription<User?>? authSubscription;
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+    userSubscription;
 
-      return _firestore
-          .collection('users')
-          .doc(firebaseUser.uid)
-          .snapshots()
-          .map((doc) {
-            if (!doc.exists) {
-              return _loadingUser(firebaseUser);
+    controller = StreamController<UserModel?>(
+      onListen: () {
+        authSubscription = FirebaseAuth.instance.userChanges().listen(
+          (firebaseUser) async {
+            await userSubscription?.cancel();
+            userSubscription = null;
+
+            if (firebaseUser == null) {
+              controller.add(null);
+              return;
             }
-            return UserModel.fromMap(
-              doc.data() as Map<String, dynamic>,
-              doc.id,
-            );
-          });
-    });
+
+            userSubscription = _firestore
+                .collection('users')
+                .doc(firebaseUser.uid)
+                .snapshots()
+                .listen(
+                  (doc) {
+                    if (!doc.exists) {
+                      controller.add(_loadingUser(firebaseUser));
+                      return;
+                    }
+
+                    controller.add(
+                      UserModel.fromMap(
+                        doc.data() as Map<String, dynamic>,
+                        doc.id,
+                      ),
+                    );
+                  },
+                  onError: controller.addError,
+                );
+          },
+          onError: controller.addError,
+        );
+      },
+      onCancel: () async {
+        await userSubscription?.cancel();
+        await authSubscription?.cancel();
+      },
+    );
+
+    return controller.stream;
   }
 
   Stream<UserModel> getUserStream(String uid) {

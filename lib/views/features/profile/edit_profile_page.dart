@@ -270,6 +270,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       initialValue: selectedRole,
       items: const [
         DropdownMenuItem(value: 'user', child: Text('Student')),
+        DropdownMenuItem(value: 'exco', child: Text('EXCO')),
         DropdownMenuItem(value: 'admin', child: Text('Admin')),
       ],
       onChanged: (value) {

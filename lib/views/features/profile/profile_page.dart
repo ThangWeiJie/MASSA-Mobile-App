@@ -72,7 +72,7 @@ class ProfilePage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  user.role == Role.admin ? 'Admin' : 'Student',
+                  user.role.label,
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
