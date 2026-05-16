@@ -1,5 +1,9 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:developer' as developer;
+
+import 'package:massa/models/crew_application.dart';
 import 'package:massa/models/event.dart';
+import 'package:massa/models/event_image_upload.dart';
+import 'package:massa/models/user.dart';
 import 'package:massa/repository/event_repository.dart';
 
 class EventService {
@@ -15,6 +19,19 @@ class EventService {
     required String location,
     required int capacity,
     required int registeredCount,
+    List<EventImageUpload> images = const [],
+    int mainImageIndex = 0,
+    bool isCrewRegistrationOpen = false,
+    String crewRegistrationDescription = '',
+    List<String> crewUnits = const [],
+    String crewRequirements = '',
+    DateTime? crewRegistrationDeadline,
+    String crewContactInfo = '',
+    int crewCapacity = 0,
+    String crewApplicantInstructions = '',
+    String crewWhatsappGroupLink = '',
+    String createdByUserId = '',
+    String createdByName = '',
   }) async {
     try {
       await eventRepository.createEvent(
@@ -25,6 +42,19 @@ class EventService {
         location: location,
         capacity: capacity,
         registeredCount: registeredCount,
+        images: images,
+        mainImageIndex: mainImageIndex,
+        isCrewRegistrationOpen: isCrewRegistrationOpen,
+        crewRegistrationDescription: crewRegistrationDescription,
+        crewUnits: crewUnits,
+        crewRequirements: crewRequirements,
+        crewRegistrationDeadline: crewRegistrationDeadline,
+        crewContactInfo: crewContactInfo,
+        crewCapacity: crewCapacity,
+        crewApplicantInstructions: crewApplicantInstructions,
+        crewWhatsappGroupLink: crewWhatsappGroupLink,
+        createdByUserId: createdByUserId,
+        createdByName: createdByName,
       );
     } catch (e) {
       rethrow;
@@ -61,8 +91,11 @@ class EventService {
         isRegistering: isJoining,
       );
     } catch (e, stack) {
-      print("LOGGED ERROR: ${e.toString()}");
-      print("STACK: $stack");
+      developer.log(
+        'Event registration action failed',
+        error: e,
+        stackTrace: stack,
+      );
       rethrow;
     }
   }
@@ -108,6 +141,54 @@ class EventService {
 
   Stream<bool> streamUserRegistration(String eventId, String userId) {
     return eventRepository.streamUserRegistration(eventId, userId);
+  }
+
+  Stream<CrewApplication?> streamUserCrewApplication({
+    required String eventId,
+    required String userId,
+  }) {
+    return eventRepository.streamUserCrewApplication(
+      eventId: eventId,
+      userId: userId,
+    );
+  }
+
+  Stream<List<CrewApplication>> streamCrewApplications(String eventId) {
+    return eventRepository.streamCrewApplications(eventId);
+  }
+
+  Future<void> applyForCrew({
+    required String eventId,
+    required UserModel applicant,
+    required String firstChoiceUnit,
+    required String secondChoiceUnit,
+    required String pitch,
+    required bool commitmentAccepted,
+  }) async {
+    await eventRepository.applyForCrew(
+      eventId: eventId,
+      applicant: applicant,
+      firstChoiceUnit: firstChoiceUnit,
+      secondChoiceUnit: secondChoiceUnit,
+      pitch: pitch,
+      commitmentAccepted: commitmentAccepted,
+    );
+  }
+
+  Future<void> decideCrewApplication({
+    required String eventId,
+    required String applicationId,
+    required CrewApplicationStatus status,
+    required String assignedUnit,
+    required UserModel reviewer,
+  }) async {
+    await eventRepository.decideCrewApplication(
+      eventId: eventId,
+      applicationId: applicationId,
+      status: status,
+      assignedUnit: assignedUnit,
+      reviewer: reviewer,
+    );
   }
 
   Stream<List<Map<String, dynamic>>> getEventParticipants(String eventId) {

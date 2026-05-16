@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:massa/models/crew_application.dart';
+import 'package:massa/models/user.dart';
 import 'package:massa/service/features/events/event_service.dart';
 import '../../../models/event.dart';
 
@@ -21,8 +23,12 @@ class EventDetailsViewModel extends ChangeNotifier {
   bool _isUserRegistered = false;
   bool get isUserRegistered => _isUserRegistered;
 
+  CrewApplication? _crewApplication;
+  CrewApplication? get crewApplication => _crewApplication;
+
   StreamSubscription<Event>? _eventSubscription;
   StreamSubscription<bool>? _registrationSubscription;
+  StreamSubscription<CrewApplication?>? _crewApplicationSubscription;
 
   EventDetailsViewModel({
     required this.eventService,
@@ -31,6 +37,7 @@ class EventDetailsViewModel extends ChangeNotifier {
   }) {
     _subscribeToEvent();
     _subscribeToRegistration();
+    _subscribeToCrewApplication();
   }
 
   void _subscribeToEvent() {
@@ -62,6 +69,22 @@ class EventDetailsViewModel extends ChangeNotifier {
           },
           onError: (error) {
             debugPrint('Event registration stream error: $error');
+          },
+        );
+  }
+
+  void _subscribeToCrewApplication() {
+    if (currentUserId == null) return;
+
+    _crewApplicationSubscription = eventService
+        .streamUserCrewApplication(eventId: eventId, userId: currentUserId!)
+        .listen(
+          (application) {
+            _crewApplication = application;
+            notifyListeners();
+          },
+          onError: (error) {
+            debugPrint('Crew application stream error: $error');
           },
         );
   }
@@ -115,10 +138,40 @@ class EventDetailsViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> applyForCrew({
+    required UserModel applicant,
+    required String firstChoiceUnit,
+    required String secondChoiceUnit,
+    required String pitch,
+    required bool commitmentAccepted,
+  }) async {
+    if (_event == null || _isActionLoading) return;
+
+    try {
+      _isActionLoading = true;
+      notifyListeners();
+      await eventService.applyForCrew(
+        eventId: eventId,
+        applicant: applicant,
+        firstChoiceUnit: firstChoiceUnit,
+        secondChoiceUnit: secondChoiceUnit,
+        pitch: pitch,
+        commitmentAccepted: commitmentAccepted,
+      );
+    } catch (e) {
+      debugPrint("Crew application error: $e");
+      rethrow;
+    } finally {
+      _isActionLoading = false;
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
     _eventSubscription?.cancel();
     _registrationSubscription?.cancel();
+    _crewApplicationSubscription?.cancel();
     super.dispose();
   }
 }

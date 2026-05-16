@@ -17,27 +17,14 @@ class _HomePageState extends State<HomePage> {
   DateTime _currentMonth = DateTime.now();
 
   @override
-  void initState() {
-    super.initState();
-    // CRITICAL: Fetch events using the user's ID to populate the registration list
-    // as soon as the page is mounted.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = context.read<UserModel?>();
-      if (user != null) {
-        context.read<EventViewModel>().fetchEvents(userId: user.uuid);
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final user = context.watch<UserModel?>();
     final eventViewModel = context.watch<EventViewModel>();
 
     eventViewModel.updateCurrentUserId(user?.uuid);
 
-    // Determine if the user is a committee member (Admin/Exco) or a student
-    final bool isStaff = user?.role == Role.admin || user?.role == Role.exco;
+    // EXCO manages event operations; Admin has that plus app-level control.
+    final bool isStaff = user?.role.canManageEvents ?? false;
     final allEvents = eventViewModel.events;
 
     // Logic: Admins/Exco see every event; Students see only their joined events
@@ -71,7 +58,7 @@ class _HomePageState extends State<HomePage> {
               child: Icon(
                 Icons.wb_sunny_outlined,
                 size: 150,
-                color: Colors.amber[200]!.withOpacity(0.3),
+                color: Colors.amber[200]!.withValues(alpha: 0.3),
               ),
             ),
 
@@ -150,7 +137,7 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.2),
+            color: Colors.orange.withValues(alpha: 0.2),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -159,7 +146,7 @@ class _HomePageState extends State<HomePage> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
+          color: Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(28),
         ),
         child: Column(
@@ -345,7 +332,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),

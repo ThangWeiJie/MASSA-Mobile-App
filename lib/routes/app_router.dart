@@ -12,6 +12,7 @@ import 'package:massa/view_models/features/authentication/login_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/profile_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/signup_viewmodel.dart';
 import 'package:massa/view_models/features/events/create_event_viewmodel.dart';
+import 'package:massa/view_models/features/events/crew_applications_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_documentation_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_details_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_registration_viewmodel.dart';
@@ -22,6 +23,7 @@ import 'package:massa/views/features/authentication/signin_screen.dart';
 import 'package:massa/views/features/authentication/signup_screen.dart';
 import 'package:massa/views/features/authentication/verify_email.dart';
 import 'package:massa/views/features/events/create_event_page.dart';
+import 'package:massa/views/features/events/crew_applications_page.dart';
 import 'package:massa/views/features/events/event_documentation_screen.dart';
 import 'package:massa/views/features/events/event_details_page.dart';
 import 'package:massa/views/features/events/event_home_page.dart';
@@ -29,6 +31,7 @@ import 'package:massa/views/features/events/event_registration_page.dart';
 import 'package:massa/views/features/events/attendee_list_page.dart';
 import 'package:massa/views/home_page_content.dart';
 import 'package:massa/views/main_shell.dart';
+import 'package:massa/views/notifications_page.dart';
 import 'package:massa/views/features/profile/profile_page.dart';
 import 'package:provider/provider.dart';
 
@@ -87,21 +90,28 @@ class AppRouter {
       GoRoute(
         path: "$eventPath/create",
         name: "Create Event Page",
-        pageBuilder: (context, state) => CustomTransitionPage(
-          opaque: false,
-          barrierColor: Colors.black54,
-          child: ExcoGuard(
-            child: ChangeNotifierProvider(
-              create: (providerContext) => CreateEventViewModel(
-                eventService: context.read<EventService>(),
+        pageBuilder: (context, state) {
+          final currentUser = context.read<UserModel?>();
+
+          return CustomTransitionPage(
+            opaque: false,
+            barrierColor: Colors.black54,
+            child: ExcoGuard(
+              child: ChangeNotifierProvider(
+                create: (providerContext) => CreateEventViewModel(
+                  eventService: context.read<EventService>(),
+                  createdByUserId: currentUser?.uuid ?? '',
+                  createdByName: currentUser?.fullName ?? '',
+                ),
+                child: const CreateEventPage(),
               ),
-              child: const CreateEventPage(),
             ),
-          ),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+          );
+        },
       ),
 
       // --- Main Application Shell ---
@@ -175,6 +185,21 @@ class AppRouter {
               );
             },
           ),
+          GoRoute(
+            path: '$eventPath/details/:eventId/crew-applications',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+              return ExcoGuard(
+                child: ChangeNotifierProvider(
+                  create: (_) => CrewApplicationsViewModel(
+                    eventService: context.read<EventService>(),
+                    eventId: eventId,
+                  ),
+                  child: const CrewApplicationsPage(),
+                ),
+              );
+            },
+          ),
           // --- Registration Route ---
           GoRoute(
             path: '$eventPath/details/:eventId/register',
@@ -204,6 +229,12 @@ class AppRouter {
                 ),
               );
             },
+          ),
+          GoRoute(
+            path: '/notifications',
+            name: "Notifications",
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: NotificationsPage()),
           ),
         ],
       ),

@@ -10,8 +10,6 @@ class ProfileViewModel extends ChangeNotifier {
 
   UserModel? _userModel;
   bool _isLoading = true;
-  bool get isLoading => _isLoading;
-
   bool _isDisposed = false;
 
   StreamSubscription<UserModel>? _userSubscription;
@@ -26,6 +24,7 @@ class ProfileViewModel extends ChangeNotifier {
   }
 
   UserModel? get user => _userModel;
+  bool get isLoading => _isLoading;
 
   void _listenToUser() {
     _userSubscription = _userRepository
@@ -44,6 +43,21 @@ class ProfileViewModel extends ChangeNotifier {
         );
   }
 
+  Future<void> fetchUser() async {
+    if (userId.isEmpty) {
+      _setLoading(false);
+      return;
+    }
+
+    try {
+      _userModel = await _userRepository.getUser(userId);
+    } catch (error) {
+      debugPrint('Fetch profile error: $error');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<void> updateProfile({
     required String fullName,
     required String phone,
@@ -60,7 +74,6 @@ class ProfileViewModel extends ChangeNotifier {
         phone: phone,
         department: department,
       );
-
     } finally {
       if (!_isDisposed) {
         _setLoading(false);
@@ -87,7 +100,7 @@ class ProfileViewModel extends ChangeNotifier {
         role: role,
       );
     } finally {
-      if (_isDisposed) {
+      if (!_isDisposed) {
         _setLoading(false);
       }
     }

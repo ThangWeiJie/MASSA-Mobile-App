@@ -53,6 +53,7 @@ class EventViewModel extends ChangeNotifier {
 
     _currentUserId = userId;
     _registeredEventIds.clear();
+    _errorMessage = null;
     _registeredEventsSubscription?.cancel();
 
     if (userId == null) {
@@ -64,11 +65,15 @@ class EventViewModel extends ChangeNotifier {
         .streamRegisteredEventIds(userId)
         .listen(
           (ids) {
+            if (_currentUserId != userId) return;
             _registeredEventIds = ids.toSet();
             _applySearch();
           },
           onError: (error) {
             debugPrint('Registered IDs stream error: $error');
+            if (_currentUserId != userId) return;
+            _registeredEventIds.clear();
+            _applySearch();
           },
         );
   }
@@ -88,9 +93,18 @@ class EventViewModel extends ChangeNotifier {
 
     try {
       _allEvents = await _eventService.getAllEvents();
-      if (userId != null) {
-        final ids = await _eventService.getRegisteredEventIds(userId);
-        _registeredEventIds = ids.toSet();
+      if (userId != null && userId == _currentUserId) {
+        try {
+          final ids = await _eventService.getRegisteredEventIds(userId);
+          if (userId == _currentUserId) {
+            _registeredEventIds = ids.toSet();
+          }
+        } catch (e) {
+          debugPrint('Registered IDs fetch error: $e');
+          if (userId == _currentUserId) {
+            _registeredEventIds.clear();
+          }
+        }
       }
       _applySearch(notify: false);
     } catch (e) {

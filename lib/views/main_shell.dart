@@ -1,6 +1,8 @@
 import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:massa/models/user.dart';
 import 'package:massa/service/features/auth/auth_service.dart';
 import 'package:massa/tab_list.dart';
 import 'package:provider/provider.dart';
@@ -77,6 +79,10 @@ class MainShell extends StatelessWidget {
                   ),
                 ),
                 actions: [
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8.0),
+                    child: _NotificationBell(),
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(right: 16.0),
                     child: PopupMenuButton<String>(
@@ -278,5 +284,56 @@ class MainShell extends StatelessWidget {
   void _onItemTapped(int index, BuildContext context) {
     final path = tabs[index].path;
     context.go(path);
+  }
+}
+
+class _NotificationBell extends StatelessWidget {
+  const _NotificationBell();
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<UserModel?>();
+
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('notifications')
+          .where('userId', isEqualTo: user.uuid)
+          .where('isRead', isEqualTo: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data?.docs.length ?? 0;
+
+        return IconButton(
+          tooltip: 'Notifications',
+          onPressed: () => context.go('/notifications'),
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                Icons.notifications_none_rounded,
+                color: Colors.orange[700],
+                size: 28,
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  right: -1,
+                  top: -1,
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: Colors.red[600],
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

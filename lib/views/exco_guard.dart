@@ -19,7 +19,7 @@ class ExcoGuard extends StatelessWidget {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
 
-          if (snapshot.data?.role == Role.exco || snapshot.data?.role == Role.admin) {
+          if (snapshot.data?.role.canManageEvents ?? false) {
             return child;
           }
 
