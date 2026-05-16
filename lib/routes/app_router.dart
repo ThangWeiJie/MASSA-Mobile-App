@@ -200,7 +200,7 @@ class AppRouter {
                     userRepo: context.read<UserRepository>(),
                     userId: currentUser?.uuid ?? '',
                   ),
-                  child: const ProfileScreen(),
+                  child: const ProfilePage(),
                 ),
               );
             },

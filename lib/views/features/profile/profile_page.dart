@@ -4,10 +4,10 @@ import 'package:massa/view_models/features/authentication/profile_viewmodel.dart
 import 'package:massa/views/features/profile/edit_profile_page.dart';
 import 'package:provider/provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfilePage extends StatelessWidget {
   final bool isAdminView;
 
-  const ProfileScreen({super.key, this.isAdminView = false});
+  const ProfilePage({super.key, this.isAdminView = false});
 
   @override
   Widget build(BuildContext context) {

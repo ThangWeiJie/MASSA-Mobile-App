@@ -10,7 +10,7 @@ class ProfileViewModel extends ChangeNotifier {
 
   UserModel? _userModel;
   bool _isLoading = true;
-  bool _disposed = false;
+  bool _isDisposed = false;
 
   StreamSubscription<UserModel>? _userSubscription;
 
@@ -74,10 +74,8 @@ class ProfileViewModel extends ChangeNotifier {
         phone: phone,
         department: department,
       );
-
-      await fetchUser();
     } finally {
-      if (!_disposed) {
+      if (!_isDisposed) {
         _setLoading(false);
       }
     }
@@ -101,24 +99,26 @@ class ProfileViewModel extends ChangeNotifier {
         department: department,
         role: role,
       );
-
-      await fetchUser();
     } finally {
-      if (!_disposed) {
+      if (!_isDisposed) {
         _setLoading(false);
       }
     }
   }
 
   void _setLoading(bool value) {
-    if (_disposed) return;
+    if (_isDisposed || _isLoading == value) return;
     _isLoading = value;
-    notifyListeners();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isDisposed) {
+        notifyListeners();
+      }
+    });
   }
 
   @override
   void dispose() {
-    _disposed = true;
+    _isDisposed = true;
     _userSubscription?.cancel();
     super.dispose();
   }

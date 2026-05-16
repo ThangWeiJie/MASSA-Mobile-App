@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:massa/models/event.dart';
 import 'package:massa/repository/event_repository.dart';
 
@@ -53,11 +54,17 @@ class EventService {
     required String userId,
     required bool isJoining,
   }) async {
-    await eventRepository.toggleRegistrationTransaction(
-      eventId: eventId,
-      userId: userId,
-      isRegistering: isJoining,
-    );
+    try {
+      await eventRepository.toggleRegistrationTransaction(
+        eventId: eventId,
+        userId: userId,
+        isRegistering: isJoining,
+      );
+    } catch (e, stack) {
+      print("LOGGED ERROR: ${e.toString()}");
+      print("STACK: $stack");
+      rethrow;
+    }
   }
 
   Future<bool> isUserRegistered(String eventId, String userId) async {

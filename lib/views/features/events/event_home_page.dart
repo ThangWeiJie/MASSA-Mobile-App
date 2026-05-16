@@ -33,7 +33,9 @@ class EventHomePage extends StatelessWidget {
               final isAdminOrExco =
                   user?.role == Role.exco || user?.role == Role.admin;
 
-              context.read<EventViewModel>().updateCurrentUserId(user?.uuid);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.read<EventViewModel>().updateCurrentUserId(user?.uuid);
+              });
 
               return Center(
                 child: ConstrainedBox(
