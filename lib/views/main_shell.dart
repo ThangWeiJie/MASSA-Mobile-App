@@ -1,6 +1,10 @@
 import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:massa/enums/role_enum.dart';
+import 'package:massa/models/navtab.dart';
+import 'package:massa/models/user.dart';
 import 'package:massa/service/features/auth/auth_service.dart';
 import 'package:massa/tab_list.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +32,8 @@ class MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final availableTabs = _availableTabs(context);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
@@ -77,6 +83,10 @@ class MainShell extends StatelessWidget {
                   ),
                 ),
                 actions: [
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8.0),
+                    child: _NotificationBell(),
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(right: 16.0),
                     child: PopupMenuButton<String>(
@@ -213,8 +223,8 @@ class MainShell extends StatelessWidget {
               child: BottomNavigationBar(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
-                currentIndex: _calculatedSelectedIndex(context),
-                onTap: (index) => _onItemTapped(index, context),
+                currentIndex: _calculatedSelectedIndex(context, availableTabs),
+                onTap: (index) => _onItemTapped(index, context, availableTabs),
                 selectedItemColor: Colors.orange[700],
                 unselectedItemColor: Colors.grey[600],
                 selectedLabelStyle: const TextStyle(
@@ -227,7 +237,7 @@ class MainShell extends StatelessWidget {
                 ),
                 showUnselectedLabels: true,
                 type: BottomNavigationBarType.fixed,
-                items: tabs
+                items: availableTabs
                     .map(
                       (tab) => BottomNavigationBarItem(
                         icon: Padding(
@@ -262,10 +272,13 @@ class MainShell extends StatelessWidget {
     );
   }
 
-  int _calculatedSelectedIndex(BuildContext context) {
+  int _calculatedSelectedIndex(
+    BuildContext context,
+    List<NavTab> availableTabs,
+  ) {
     final String location = GoRouterState.of(context).uri.path;
 
-    final index = tabs.indexWhere((tab) {
+    final index = availableTabs.indexWhere((tab) {
       if (tab.path == '/') {
         return location == '/';
       }
@@ -275,8 +288,85 @@ class MainShell extends StatelessWidget {
     return index < 0 ? 0 : index;
   }
 
-  void _onItemTapped(int index, BuildContext context) {
-    final path = tabs[index].path;
+  void _onItemTapped(
+    int index,
+    BuildContext context,
+    List<NavTab> availableTabs,
+  ) {
+    final path = availableTabs[index].path;
     context.go(path);
+  }
+
+  List<NavTab> _availableTabs(BuildContext context) {
+    final user = context.watch<UserModel?>();
+    final canManageEvents = user?.role.canManageEvents ?? false;
+
+    if (!canManageEvents) return tabs;
+
+    return [
+      const NavTab(path: homePath, icon: Icons.home, label: "Home"),
+      const NavTab(path: eventPath, icon: Icons.event, label: "Programs"),
+      const NavTab(
+        path: excoMembersPath,
+        icon: Icons.groups_2_outlined,
+        label: 'EXCO',
+      ),
+      const NavTab(
+        path: profilePath,
+        icon: Icons.account_box,
+        label: "Profile",
+      ),
+    ];
+  }
+}
+
+class _NotificationBell extends StatelessWidget {
+  const _NotificationBell();
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<UserModel?>();
+
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('notifications')
+          .where('userId', isEqualTo: user.uuid)
+          .where('isRead', isEqualTo: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data?.docs.length ?? 0;
+
+        return IconButton(
+          tooltip: 'Notifications',
+          onPressed: () => context.go('/notifications'),
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                Icons.notifications_none_rounded,
+                color: Colors.orange[700],
+                size: 28,
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  right: -1,
+                  top: -1,
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: Colors.red[600],
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

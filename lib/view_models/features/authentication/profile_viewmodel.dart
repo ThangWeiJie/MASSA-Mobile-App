@@ -10,7 +10,7 @@ class ProfileViewModel extends ChangeNotifier {
 
   UserModel? _userModel;
   bool _isLoading = true;
-  bool get isLoading => _isLoading;
+  bool _isDisposed = false;
 
   StreamSubscription<UserModel>? _userSubscription;
 
@@ -24,6 +24,7 @@ class ProfileViewModel extends ChangeNotifier {
   }
 
   UserModel? get user => _userModel;
+  bool get isLoading => _isLoading;
 
   void _listenToUser() {
     _userSubscription = _userRepository
@@ -42,8 +43,82 @@ class ProfileViewModel extends ChangeNotifier {
         );
   }
 
+  Future<void> fetchUser() async {
+    if (userId.isEmpty) {
+      _setLoading(false);
+      return;
+    }
+
+    try {
+      _userModel = await _userRepository.getUser(userId);
+    } catch (error) {
+      debugPrint('Fetch profile error: $error');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> updateProfile({
+    required String fullName,
+    required String phone,
+    required String department,
+  }) async {
+    if (_userModel == null) return;
+
+    _setLoading(true);
+
+    try {
+      await _userRepository.updateUserProfile(
+        userId: userId,
+        fullName: fullName,
+        phone: phone,
+        department: department,
+      );
+    } finally {
+      if (!_isDisposed) {
+        _setLoading(false);
+      }
+    }
+  }
+
+  Future<void> adminUpdateUserProfile({
+    required String fullName,
+    required String phone,
+    required String department,
+    required String role,
+  }) async {
+    if (_userModel == null) return;
+
+    _setLoading(true);
+
+    try {
+      await _userRepository.adminUpdateUserProfile(
+        userId: userId,
+        fullName: fullName,
+        phone: phone,
+        department: department,
+        role: role,
+      );
+    } finally {
+      if (!_isDisposed) {
+        _setLoading(false);
+      }
+    }
+  }
+
+  void _setLoading(bool value) {
+    if (_isDisposed || _isLoading == value) return;
+    _isLoading = value;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isDisposed) {
+        notifyListeners();
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _isDisposed = true;
     _userSubscription?.cancel();
     super.dispose();
   }

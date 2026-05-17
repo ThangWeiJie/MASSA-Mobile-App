@@ -17,7 +17,7 @@ class AuthService {
 
   // Get auth state changes (login/logout)
   Stream<User?> get authStateChanges {
-    return firebaseAuth.authStateChanges();
+    return firebaseAuth.userChanges();
   }
 
   // Sign in

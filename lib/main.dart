@@ -65,7 +65,7 @@ class MyApp extends StatelessWidget {
       ],
       child: Builder(
         builder: (context) {
-          final appRouter = context.read<AppRouter>();
+          final appRouter = context.watch<AppRouter>();
 
           return MaterialApp.router(
             title: 'Massa Demo',

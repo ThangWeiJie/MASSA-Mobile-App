@@ -5,6 +5,7 @@ import 'package:massa/models/user.dart';
 import 'package:massa/repository/user_repository.dart';
 import 'package:massa/tab_list.dart';
 import 'package:massa/view_models/features/events/event_viewmodel.dart';
+import 'package:massa/views/features/events/widgets/event_image_gallery.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -15,6 +16,14 @@ class EventHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<UserModel?>();
+    final canManageEvents = user?.role.canManageEvents ?? false;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      context.read<EventViewModel>().updateCurrentUserId(user?.uuid);
+    });
+
     return Scaffold(
       body: Container(
         // Orange/Amber/Yellow Gradient Background
@@ -26,35 +35,24 @@ class EventHomePage extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: StreamBuilder<UserModel?>(
-            stream: userRepository.userStream,
-            builder: (context, snapshot) {
-              final user = snapshot.data;
-              final isAdminOrExco =
-                  user?.role == Role.exco || user?.role == Role.admin;
-
-              context.read<EventViewModel>().updateCurrentUserId(user?.uuid);
-
-              return Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 500),
-                  child: Column(
-                    children: [
-                      _buildHeader(context, isAdminOrExco),
-                      _buildSearchBar(context),
-                      const Expanded(child: EventList()),
-                    ],
-                  ),
-                ),
-              );
-            },
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Column(
+                children: [
+                  _buildHeader(context, canManageEvents),
+                  _buildSearchBar(context),
+                  const Expanded(child: EventList()),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isAdminOrExco) {
+  Widget _buildHeader(BuildContext context, bool canManageEvents) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
       child: Row(
@@ -118,7 +116,7 @@ class EventHomePage extends StatelessWidget {
                     Text(
                       'Discover upcoming events',
                       style: TextStyle(
-                        color: Colors.amber[900]!.withOpacity(0.7),
+                        color: Colors.amber[900]!.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -127,7 +125,7 @@ class EventHomePage extends StatelessWidget {
               ],
             ),
           ),
-          if (isAdminOrExco)
+          if (canManageEvents)
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -146,7 +144,7 @@ class EventHomePage extends StatelessWidget {
                   ),
                 ],
                 border: Border.all(
-                  color: Colors.amber[200]!.withOpacity(0.5),
+                  color: Colors.amber[200]!.withValues(alpha: 0.5),
                   width: 2,
                 ),
               ),
@@ -188,7 +186,7 @@ class EventHomePage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: Colors.amber[300]!,
@@ -196,7 +194,7 @@ class EventHomePage extends StatelessWidget {
           ), // Fixed uniform border
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -252,7 +250,7 @@ class EventList extends StatelessWidget {
           margin: const EdgeInsets.all(32),
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: Colors.amber[300]!,
@@ -278,7 +276,7 @@ class EventList extends StatelessWidget {
               Text(
                 "No events found",
                 style: TextStyle(
-                  color: Colors.amber[900]!.withOpacity(0.7),
+                  color: Colors.amber[900]!.withValues(alpha: 0.7),
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
@@ -315,7 +313,7 @@ class EventList extends StatelessWidget {
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
+              color: Colors.white.withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(24),
               // FIX: This border is now completely uniform, preventing the Flutter painting crash!
               border: Border.all(color: Colors.amber[300]!, width: 2),
@@ -332,125 +330,143 @@ class EventList extends StatelessWidget {
               child: InkWell(
                 borderRadius: BorderRadius.circular(24),
                 onTap: () => context.push("$eventPath/details/${event.id}"),
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (event.displayImageUrls.isNotEmpty)
+                      EventImageCarousel(
+                        imageUrls: event.displayImageUrls,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(22),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: List.generate(
-                                    4,
-                                    (i) => Container(
-                                      margin: const EdgeInsets.only(right: 4),
-                                      width: 6,
-                                      height: 6,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: i % 2 == 0
-                                            ? Colors.amber[500]
-                                            : Colors.orange[600],
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: List.generate(
+                                        4,
+                                        (i) => Container(
+                                          margin: const EdgeInsets.only(
+                                            right: 4,
+                                          ),
+                                          width: 6,
+                                          height: 6,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: i % 2 == 0
+                                                ? Colors.amber[500]
+                                                : Colors.orange[600],
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      event.eventName,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  event.eventName,
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.amber[100]!,
-                                  Colors.orange[100]!,
-                                ],
                               ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.amber[300]!,
-                                width: 2,
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
                                 ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.people_alt,
-                                  size: 16,
-                                  color: Colors.amber[900],
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  "$registered/$capacity",
-                                  style: TextStyle(
-                                    color: Colors.amber[900],
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.amber[100]!,
+                                      Colors.orange[100]!,
+                                    ],
                                   ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Colors.amber[300]!,
+                                    width: 2,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.people_alt,
+                                      size: 16,
+                                      color: Colors.amber[900],
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "$registered/$capacity",
+                                      style: TextStyle(
+                                        color: Colors.amber[900],
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 12),
+                          Text(
+                            event.description,
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (event.isCrewRegistrationOpen) ...[
+                            const SizedBox(height: 12),
+                            _buildCrewOpenChip(event.crewUnits.length),
+                          ],
+                          const SizedBox(height: 16),
+
+                          // Details Rows safely checking for null dates
+                          _buildDetailRow(
+                            Icons.calendar_month,
+                            DateFormat(
+                              'EEEE, MMMM dd, yyyy',
+                            ).format(event.startDateTime),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildDetailRow(
+                            Icons.access_time_filled,
+                            DateFormat('jm').format(event.startDateTime),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildDetailRow(Icons.location_on, location),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        event.description,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Details Rows safely checking for null dates
-                      _buildDetailRow(
-                        Icons.calendar_month,
-                        DateFormat(
-                          'EEEE, MMMM dd, yyyy',
-                        ).format(event.startDateTime),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildDetailRow(
-                        Icons.access_time_filled,
-                        DateFormat('jm').format(event.startDateTime),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildDetailRow(Icons.location_on, location),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -484,6 +500,39 @@ class EventList extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCrewOpenChip(int unitCount) {
+    final label = unitCount > 0
+        ? 'Crew Registration Open - $unitCount units'
+        : 'Crew Registration Open';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.green[200]!),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.groups_2_outlined, size: 16, color: Colors.green[700]),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.green[800],
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
