@@ -12,6 +12,7 @@ class UserModel {
   final String phone;
   final String department;
   final String organizationRole;
+  final String? fcmToken;
 
   String get getUUID => uuid;
 
@@ -26,6 +27,7 @@ class UserModel {
     this.phone = '',
     this.department = '',
     this.organizationRole = '',
+    this.fcmToken
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String id) {

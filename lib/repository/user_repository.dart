@@ -257,4 +257,11 @@ class UserRepository {
       'role': role,
     });
   }
+
+  Future<void> updateFcmToken(String uid, String? token) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update({'fcmToken': token});
+  }
 }
