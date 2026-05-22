@@ -11,6 +11,7 @@ class UserModel {
   final DateTime? memberSince;
   final String phone;
   final String department;
+  final String organizationRole;
 
   String get getUUID => uuid;
 
@@ -24,6 +25,7 @@ class UserModel {
     this.memberSince,
     this.phone = '',
     this.department = '',
+    this.organizationRole = '',
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String id) {
@@ -35,6 +37,12 @@ class UserModel {
       matricNumber: data['matricNumber'] ?? '',
       phone: data['phone'] ?? '',
       department: data['department'] ?? '',
+      organizationRole:
+          data['organizationRole'] ??
+          data['committeeRole'] ??
+          data['excoPosition'] ??
+          data['position'] ??
+          '',
       memberSince: data['memberSince'] != null
           ? (data['memberSince'] as Timestamp).toDate()
           : null,
@@ -54,6 +62,7 @@ class UserModel {
       'matricNumber': matricNumber,
       'phone': phone,
       'department': department,
+      'organizationRole': organizationRole,
       'memberSince': memberSince,
     };
   }
