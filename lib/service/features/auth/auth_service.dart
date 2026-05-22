@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:massa/enums/role_enum.dart';
 import 'package:massa/models/user.dart';
 import 'package:massa/repository/user_repository.dart';
@@ -24,6 +25,12 @@ class AuthService {
   Future signInWithEmailPassword(String email, String password) async {
     try {
       final credentials = await firebaseAuth.signInWithEmailAndPassword(email: email, password: password);
+
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        await _userRepository.updateFcmToken(credentials.user!.uid, token);
+      }
+
       var user = userFromFirebaseUser(credentials.user);
       return user;
     } catch(e) {
@@ -52,6 +59,11 @@ class AuthService {
 
       await _userRepository.createMember(newUser);
 
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        await _userRepository.updateFcmToken(userCredential.user!.uid, token);
+      }
+
       await userCredential.user?.sendEmailVerification();
     } catch (e) {
       rethrow;
@@ -69,6 +81,10 @@ class AuthService {
 
   Future<void> resetPassword(String code, String newPassword) async {
     try {
+      final uid = firebaseAuth.currentUser?.uid;
+      if (uid != null) {
+        await _userRepository.updateFcmToken(uid, null);
+      }
       firebaseAuth.confirmPasswordReset(code: code, newPassword: newPassword);
     } catch (e) {
       rethrow;

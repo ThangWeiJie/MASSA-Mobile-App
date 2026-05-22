@@ -9,15 +9,14 @@ import 'package:massa/routes/app_router.dart';
 import 'package:massa/service/features/auth/auth_notifier.dart';
 import 'package:massa/service/features/auth/auth_service.dart';
 import 'package:massa/service/features/events/event_service.dart';
-// Merged: Import for EventViewModel
-import 'package:massa/view_models/features/events/event_viewmodel.dart'; 
+import 'package:massa/service/firebase_msg.dart';
+import 'package:massa/view_models/features/events/event_viewmodel.dart';
 import 'package:provider/provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
+  await FirebaseMsg().initFCM();
   runApp(const MyApp());
 }
 
