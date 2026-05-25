@@ -9,6 +9,7 @@ class EventViewModel extends ChangeNotifier {
 
   List<Event> _allEvents = [];
   List<Event> _filteredEvents = [];
+  Map<int, List<Event>> _filteredPastEventsByYear = {};
   Set<String> _registeredEventIds = {};
 
   StreamSubscription<List<Event>>? _eventsSubscription;
@@ -26,6 +27,11 @@ class EventViewModel extends ChangeNotifier {
   String get searchQuery => _searchQuery;
 
   List<Event> get events => _filteredEvents;
+  Map<int, List<Event>> get pastEventsByYear => _filteredPastEventsByYear;
+  int get pastEventCount => _filteredPastEventsByYear.values.fold(
+        0,
+        (total, events) => total + events.length,
+      );
 
   EventViewModel(this._eventService) {
     _subscribeToEvents();
@@ -122,14 +128,55 @@ class EventViewModel extends ChangeNotifier {
 
   void _applySearch({bool notify = true}) {
     final query = _searchQuery.trim().toLowerCase();
-    _filteredEvents = query.isEmpty
-        ? List.from(_allEvents)
-        : _allEvents.where((event) {
-            return event.eventName.toLowerCase().contains(query) ||
-                event.description.toLowerCase().contains(query);
-          }).toList();
+    final now = DateTime.now();
+    final activeEvents = <Event>[];
+    final pastEvents = <Event>[];
+
+    for (final event in _allEvents) {
+      if (_isPastEvent(event, now)) {
+        pastEvents.add(event);
+      } else {
+        activeEvents.add(event);
+      }
+    }
+
+    _filteredEvents = _filterEvents(activeEvents, query)
+      ..sort(
+        (first, second) => first.startDateTime.compareTo(second.startDateTime),
+      );
+
+    final filteredPastEvents = _filterEvents(pastEvents, query)
+      ..sort(
+        (first, second) => second.endDateTime.compareTo(first.endDateTime),
+      );
+
+    _filteredPastEventsByYear = _groupPastEventsByYear(filteredPastEvents);
 
     if (notify) notifyListeners();
+  }
+
+  bool _isPastEvent(Event event, DateTime now) {
+    return event.endDateTime.isBefore(now);
+  }
+
+  List<Event> _filterEvents(List<Event> events, String query) {
+    if (query.isEmpty) return List<Event>.from(events);
+
+    return events.where((event) {
+      return event.eventName.toLowerCase().contains(query) ||
+          event.description.toLowerCase().contains(query) ||
+          event.location.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  Map<int, List<Event>> _groupPastEventsByYear(List<Event> pastEvents) {
+    final groupedEvents = <int, List<Event>>{};
+
+    for (final event in pastEvents) {
+      groupedEvents.putIfAbsent(event.startDateTime.year, () => []).add(event);
+    }
+
+    return groupedEvents;
   }
 
   @override

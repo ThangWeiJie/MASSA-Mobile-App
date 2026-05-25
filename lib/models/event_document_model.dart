@@ -10,8 +10,9 @@ class EventDocumentModel {
   final DateTime uploadedAt;
   final String? parentFolderId;
   final bool isFolder;
+  final String fileType;
 
-  const EventDocumentModel({
+  EventDocumentModel({
     required this.id,
     required this.fileName,
     required this.fileUrl,
@@ -21,7 +22,10 @@ class EventDocumentModel {
     required this.uploadedAt,
     this.parentFolderId,
     this.isFolder = false,
-  });
+    String? fileType,
+  }) : fileType =
+           fileType ??
+           _inferFileType(fileExtension: fileExtension, isFolder: isFolder);
 
   factory EventDocumentModel.fromMap(
     Map<String, dynamic> map,
@@ -43,6 +47,12 @@ class EventDocumentModel {
           : DateTime.fromMillisecondsSinceEpoch(0),
       parentFolderId: map['parentFolderId'] as String?,
       isFolder: map['isFolder'] as bool? ?? false,
+      fileType:
+          map['fileType'] as String? ??
+          _inferFileType(
+            fileExtension: map['fileExtension'] as String? ?? '',
+            isFolder: map['isFolder'] as bool? ?? false,
+          ),
     );
   }
 
@@ -56,6 +66,35 @@ class EventDocumentModel {
       'uploadedAt': Timestamp.fromDate(uploadedAt),
       'parentFolderId': parentFolderId,
       'isFolder': isFolder,
+      'fileType': fileType,
     };
+  }
+
+  static String inferFileTypeFromExtension(String extension) {
+    return _inferFileType(fileExtension: extension, isFolder: false);
+  }
+
+  static String _inferFileType({
+    required String fileExtension,
+    required bool isFolder,
+  }) {
+    if (isFolder) return 'folder';
+
+    switch (fileExtension.toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'webp':
+        return 'image';
+      case 'mp4':
+      case 'mov':
+      case 'avi':
+      case 'mkv':
+      case 'webm':
+        return 'video';
+      default:
+        return 'document';
+    }
   }
 }

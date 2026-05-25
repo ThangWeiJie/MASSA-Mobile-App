@@ -31,7 +31,7 @@ class EventDocumentationRepository {
     String? contentType,
   }) async {
     final safeFileName = _sanitizeFileName(fileName);
-    final folderSegment = parentFolderId == null ? 'root' : parentFolderId;
+    final folderSegment = parentFolderId ?? 'root';
     final storagePath =
         'event_docs/$eventId/$folderSegment/${DateTime.now().millisecondsSinceEpoch}_$safeFileName';
     final fileRef = _storage.ref().child(storagePath);
@@ -61,6 +61,7 @@ class EventDocumentationRepository {
       uploadedAt: document.uploadedAt,
       parentFolderId: document.parentFolderId,
       isFolder: document.isFolder,
+      fileType: document.fileType,
     );
 
     await docRef.set(documentWithFirestoreId.toMap());
@@ -88,6 +89,7 @@ class EventDocumentationRepository {
       uploadedAt: DateTime.now(),
       parentFolderId: parentFolderId,
       isFolder: true,
+      fileType: 'folder',
     );
 
     await saveDocumentMetadata(eventId: eventId, document: folder);
@@ -145,6 +147,21 @@ class EventDocumentationRepository {
       });
 
       return documents;
+    });
+  }
+
+  Stream<List<EventDocumentModel>> streamMediaDocuments(String eventId) {
+    return _documentationCollection(eventId)
+        .where('fileType', whereIn: ['image', 'video'])
+        .snapshots()
+        .map((snapshot) {
+      final media = snapshot.docs.map((doc) {
+        return EventDocumentModel.fromMap(doc.data(), doc.id);
+      }).toList();
+
+      media.sort((first, second) => second.uploadedAt.compareTo(first.uploadedAt));
+
+      return media;
     });
   }
 

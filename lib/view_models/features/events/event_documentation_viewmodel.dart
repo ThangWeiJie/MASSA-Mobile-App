@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:massa/models/event_document_model.dart';
@@ -8,34 +10,121 @@ class EventDocumentationViewModel extends ChangeNotifier {
   final String eventId;
   final String? userName;
 
+  bool _isLoading = false;
+  bool _isLoadingDocuments = true;
+  bool _isLoadingGallery = true;
+  String? _errorMessage;
+  String? _documentsErrorMessage;
+  String? _galleryErrorMessage;
+  String? _currentFolderId;
+  StreamSubscription<List<EventDocumentModel>>? _documentsSubscription;
+  StreamSubscription<List<EventDocumentModel>>? _gallerySubscription;
+  final List<EventDocumentModel> _folderStack = [];
+  List<EventDocumentModel> _documentFiles = [];
+  List<EventDocumentModel> _mediaFiles = [];
+
+  bool get isLoading => _isLoading;
+  bool get isLoadingDocuments => _isLoadingDocuments;
+  bool get isLoadingGallery => _isLoadingGallery;
+  bool get isLoadingFiles => _isLoadingDocuments || _isLoadingGallery;
+  String? get errorMessage =>
+      _errorMessage ?? _documentsErrorMessage ?? _galleryErrorMessage;
+  String? get documentsErrorMessage => _documentsErrorMessage;
+  String? get galleryErrorMessage => _galleryErrorMessage;
+  String? get currentFolderId => _currentFolderId;
+  bool get isInsideFolder => _currentFolderId != null;
+  List<EventDocumentModel> get documentFiles => _documentFiles;
+  List<EventDocumentModel> get mediaFiles => _mediaFiles;
+  String get currentFolderName =>
+      _folderStack.isEmpty ? 'Event Documentation' : _folderStack.last.fileName;
+
+  static const List<String> _mediaUploadExtensions = [
+    'jpg',
+    'jpeg',
+    'png',
+    'gif',
+    'webp',
+    'mp4',
+    'mov',
+    'avi',
+    'mkv',
+    'webm',
+  ];
+
   EventDocumentationViewModel({
     required this.repository,
     required this.eventId,
     this.userName,
-  });
-
-  bool _isLoading = false;
-  String? _errorMessage;
-  String? _currentFolderId;
-  final List<EventDocumentModel> _folderStack = [];
-
-  bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-  String? get currentFolderId => _currentFolderId;
-  bool get isInsideFolder => _currentFolderId != null;
-  String get currentFolderName =>
-      _folderStack.isEmpty ? 'Event Documentation' : _folderStack.last.fileName;
+  }) {
+    _subscribeToDocuments();
+    _subscribeToGallery();
+  }
 
   Stream<List<EventDocumentModel>> get documentsStream {
     return repository.streamDocuments(eventId, parentFolderId: _currentFolderId);
   }
 
-  Future<bool> pickAndUploadDocument() async {
+  void _subscribeToDocuments() {
+    _documentsSubscription?.cancel();
+    _isLoadingDocuments = true;
+    _documentsErrorMessage = null;
+
+    _documentsSubscription = documentsStream.listen(
+      (documents) {
+        _documentFiles = documents;
+        _isLoadingDocuments = false;
+        notifyListeners();
+      },
+      onError: (error) {
+        _documentsErrorMessage = _friendlyErrorMessage(error);
+        _documentFiles = [];
+        _isLoadingDocuments = false;
+        notifyListeners();
+      },
+    );
+  }
+
+  void _subscribeToGallery() {
+    _gallerySubscription?.cancel();
+    _isLoadingGallery = true;
+    _galleryErrorMessage = null;
+
+    _gallerySubscription = repository.streamMediaDocuments(eventId).listen(
+      (documents) {
+        _mediaFiles = documents;
+        _isLoadingGallery = false;
+        notifyListeners();
+      },
+      onError: (error) {
+        _galleryErrorMessage = _friendlyErrorMessage(error);
+        _mediaFiles = [];
+        _isLoadingGallery = false;
+        notifyListeners();
+      },
+    );
+  }
+
+  String _friendlyErrorMessage(Object? error) {
+    final errorText = error.toString().toLowerCase();
+    if (errorText.contains('permission-denied')) {
+      return 'Documentation is not available yet.\nPlease update the Firestore permissions for event documents.';
+    }
+    return 'Unable to load documents.\nPlease try again later.';
+  }
+
+  Future<bool> pickAndUploadDocument({
+    bool useCurrentFolder = true,
+    bool mediaOnly = false,
+  }) async {
     _setLoading(true);
     _errorMessage = null;
 
     try {
-      final result = await FilePicker.platform.pickFiles(withData: true);
+      final result = await FilePicker.platform.pickFiles(
+        withData: true,
+        type: mediaOnly ? FileType.custom : FileType.any,
+        allowedExtensions: mediaOnly ? _mediaUploadExtensions : null,
+      );
 
       if (result == null || result.files.isEmpty) {
         return false;
@@ -50,11 +139,12 @@ class EventDocumentationViewModel extends ChangeNotifier {
 
       final fileName = pickedFile.name;
       final fileExtension = pickedFile.extension?.toLowerCase() ?? '';
+      final parentFolderId = useCurrentFolder ? _currentFolderId : null;
       final uploadResult = await repository.uploadFile(
         eventId: eventId,
         fileName: fileName,
         fileBytes: fileBytes,
-        parentFolderId: _currentFolderId,
+        parentFolderId: parentFolderId,
       );
 
       final document = EventDocumentModel(
@@ -65,7 +155,8 @@ class EventDocumentationViewModel extends ChangeNotifier {
         storagePath: uploadResult.storagePath,
         uploadedBy: userName ?? 'Unknown EXCO',
         uploadedAt: DateTime.now(),
-        parentFolderId: _currentFolderId,
+        parentFolderId: parentFolderId,
+        fileType: EventDocumentModel.inferFileTypeFromExtension(fileExtension),
       );
 
       await repository.saveDocumentMetadata(
@@ -132,6 +223,7 @@ class EventDocumentationViewModel extends ChangeNotifier {
           uploadedAt: document.uploadedAt,
           parentFolderId: document.parentFolderId,
           isFolder: document.isFolder,
+          fileType: document.fileType,
         );
       }
 
@@ -164,7 +256,7 @@ class EventDocumentationViewModel extends ChangeNotifier {
 
     _folderStack.add(folder);
     _currentFolderId = folder.id;
-    notifyListeners();
+    _subscribeToDocuments();
   }
 
   bool goBackFolder() {
@@ -172,7 +264,7 @@ class EventDocumentationViewModel extends ChangeNotifier {
 
     _folderStack.removeLast();
     _currentFolderId = _folderStack.isEmpty ? null : _folderStack.last.id;
-    notifyListeners();
+    _subscribeToDocuments();
     return true;
   }
 
@@ -184,5 +276,12 @@ class EventDocumentationViewModel extends ChangeNotifier {
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _documentsSubscription?.cancel();
+    _gallerySubscription?.cancel();
+    super.dispose();
   }
 }

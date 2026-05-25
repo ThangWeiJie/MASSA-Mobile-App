@@ -138,6 +138,13 @@ class AppRouter {
             ),
           ),
           GoRoute(
+            path: '$eventPath/past',
+            name: "Past Events",
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: ExcoGuard(child: PastEventsPage()),
+            ),
+          ),
+          GoRoute(
             path: excoMembersPath,
             name: "EXCO Members",
             pageBuilder: (context, state) => NoTransitionPage(
