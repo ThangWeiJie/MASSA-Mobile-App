@@ -32,18 +32,38 @@ class ProfilePage extends StatelessWidget {
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
-                  const CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Color(0xFFE5E7EB),
-                    child: Icon(Icons.person, size: 50, color: Colors.white),
+                  InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: viewModel.isUploadingProfileImage
+                        ? null
+                        : () => _changeProfileImage(context, viewModel),
+                    child: _ProfileAvatar(
+                      imageUrl: user.profileImageUrl,
+                      isUploading: viewModel.isUploadingProfileImage,
+                    ),
                   ),
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: const Color(0xFFCE1126),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      size: 14,
-                      color: Colors.white,
+                  InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: viewModel.isUploadingProfileImage
+                        ? null
+                        : () => _changeProfileImage(context, viewModel),
+                    child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: const Color(0xFFCE1126),
+                      child: viewModel.isUploadingProfileImage
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.camera_alt,
+                              size: 14,
+                              color: Colors.white,
+                            ),
                     ),
                   ),
                 ],
@@ -194,5 +214,74 @@ class ProfilePage extends StatelessWidget {
 
   Widget _divider() {
     return const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB));
+  }
+
+  Future<void> _changeProfileImage(
+    BuildContext context,
+    ProfileViewModel viewModel,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final success = await viewModel.pickAndUploadProfileImage();
+
+    if (!context.mounted) return;
+
+    if (success) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Profile picture updated.'),
+          backgroundColor: Colors.green[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final message = viewModel.errorMessage;
+    if (message == null || message.isEmpty) return;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red[700],
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.imageUrl, required this.isUploading});
+
+  final String imageUrl;
+  final bool isUploading;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imageUrl.trim().isNotEmpty;
+
+    return CircleAvatar(
+      radius: 50,
+      backgroundColor: const Color(0xFFE5E7EB),
+      backgroundImage: hasImage ? NetworkImage(imageUrl) : null,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (!hasImage)
+            const Icon(Icons.person, size: 50, color: Colors.white),
+          if (isUploading)
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.28),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

@@ -11,8 +11,8 @@ class EventDocumentationRepository {
   EventDocumentationRepository({
     FirebaseFirestore? firestore,
     FirebaseStorage? storage,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _storage = storage ?? FirebaseStorage.instance;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _storage = storage ?? FirebaseStorage.instance;
 
   CollectionReference<Map<String, dynamic>> _documentationCollection(
     String eventId,
@@ -106,9 +106,19 @@ class EventDocumentationRepository {
       throw Exception('Name cannot be empty.');
     }
 
-    await _documentationCollection(eventId).doc(documentId).update({
-      'fileName': trimmedName,
-    });
+    await _documentationCollection(
+      eventId,
+    ).doc(documentId).update({'fileName': trimmedName});
+  }
+
+  Future<void> moveDocument({
+    required String eventId,
+    required String documentId,
+    required String? parentFolderId,
+  }) async {
+    await _documentationCollection(
+      eventId,
+    ).doc(documentId).update({'parentFolderId': parentFolderId});
   }
 
   Future<void> deleteDocument({
@@ -128,15 +138,17 @@ class EventDocumentationRepository {
     String eventId, {
     String? parentFolderId,
   }) {
-    return _documentationCollection(eventId)
-        .orderBy('uploadedAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      final documents = snapshot.docs.map((doc) {
-        return EventDocumentModel.fromMap(doc.data(), doc.id);
-      }).where((document) {
-        return document.parentFolderId == parentFolderId;
-      }).toList();
+    return _documentationCollection(
+      eventId,
+    ).orderBy('uploadedAt', descending: true).snapshots().map((snapshot) {
+      final documents = snapshot.docs
+          .map((doc) {
+            return EventDocumentModel.fromMap(doc.data(), doc.id);
+          })
+          .where((document) {
+            return document.parentFolderId == parentFolderId;
+          })
+          .toList();
 
       documents.sort((first, second) {
         if (first.isFolder != second.isFolder) {
@@ -150,28 +162,52 @@ class EventDocumentationRepository {
     });
   }
 
+  Future<List<EventDocumentModel>> fetchFolders(String eventId) async {
+    final snapshot = await _documentationCollection(
+      eventId,
+    ).orderBy('uploadedAt', descending: true).get();
+
+    final folders = snapshot.docs
+        .map((doc) {
+          return EventDocumentModel.fromMap(doc.data(), doc.id);
+        })
+        .where((document) {
+          return document.isFolder;
+        })
+        .toList();
+
+    folders.sort(
+      (first, second) =>
+          first.fileName.toLowerCase().compareTo(second.fileName.toLowerCase()),
+    );
+
+    return folders;
+  }
+
   Stream<List<EventDocumentModel>> streamMediaDocuments(String eventId) {
     return _documentationCollection(eventId)
         .where('fileType', whereIn: ['image', 'video'])
         .snapshots()
         .map((snapshot) {
-      final media = snapshot.docs.map((doc) {
-        return EventDocumentModel.fromMap(doc.data(), doc.id);
-      }).toList();
+          final media = snapshot.docs.map((doc) {
+            return EventDocumentModel.fromMap(doc.data(), doc.id);
+          }).toList();
 
-      media.sort((first, second) => second.uploadedAt.compareTo(first.uploadedAt));
+          media.sort(
+            (first, second) => second.uploadedAt.compareTo(first.uploadedAt),
+          );
 
-      return media;
-    });
+          return media;
+        });
   }
 
   Future<void> _deleteFolderContents({
     required String eventId,
     required String folderId,
   }) async {
-    final children = await _documentationCollection(eventId)
-        .where('parentFolderId', isEqualTo: folderId)
-        .get();
+    final children = await _documentationCollection(
+      eventId,
+    ).where('parentFolderId', isEqualTo: folderId).get();
 
     for (final childDoc in children.docs) {
       final child = EventDocumentModel.fromMap(childDoc.data(), childDoc.id);

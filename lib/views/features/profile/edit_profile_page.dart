@@ -79,9 +79,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _changeProfileImage(ProfileViewModel viewModel) async {
+    final success = await viewModel.pickAndUploadProfileImage();
+
+    if (!mounted) return;
+
+    if (success) {
+      _showMessage('Profile picture updated.');
+      return;
+    }
+
+    final errorMessage = viewModel.errorMessage;
+    if (errorMessage != null && errorMessage.isNotEmpty) {
+      _showMessage(errorMessage);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<ProfileViewModel>();
+    final user = viewModel.user;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0),
@@ -108,18 +125,38 @@ class _EditProfilePageState extends State<EditProfilePage> {
             Stack(
               alignment: Alignment.bottomRight,
               children: [
-                const CircleAvatar(
-                  radius: 48,
-                  backgroundColor: Color(0xFFE5E7EB),
-                  child: Icon(Icons.person, size: 48, color: Colors.white),
+                InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: viewModel.isUploadingProfileImage
+                      ? null
+                      : () => _changeProfileImage(viewModel),
+                  child: _EditableProfileAvatar(
+                    imageUrl: user?.profileImageUrl ?? '',
+                    isUploading: viewModel.isUploadingProfileImage,
+                  ),
                 ),
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: const Color(0xFFCE1126),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    size: 14,
-                    color: Colors.white,
+                InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: viewModel.isUploadingProfileImage
+                      ? null
+                      : () => _changeProfileImage(viewModel),
+                  child: CircleAvatar(
+                    radius: 16,
+                    backgroundColor: const Color(0xFFCE1126),
+                    child: viewModel.isUploadingProfileImage
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.camera_alt,
+                            size: 14,
+                            color: Colors.white,
+                          ),
                   ),
                 ),
               ],
@@ -293,6 +330,46 @@ class _EditProfilePageState extends State<EditProfilePage> {
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFCE1126), width: 1.5),
         ),
+      ),
+    );
+  }
+}
+
+class _EditableProfileAvatar extends StatelessWidget {
+  const _EditableProfileAvatar({
+    required this.imageUrl,
+    required this.isUploading,
+  });
+
+  final String imageUrl;
+  final bool isUploading;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imageUrl.trim().isNotEmpty;
+
+    return CircleAvatar(
+      radius: 48,
+      backgroundColor: const Color(0xFFE5E7EB),
+      backgroundImage: hasImage ? NetworkImage(imageUrl) : null,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (!hasImage)
+            const Icon(Icons.person, size: 48, color: Colors.white),
+          if (isUploading)
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.28),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
+        ],
       ),
     );
   }

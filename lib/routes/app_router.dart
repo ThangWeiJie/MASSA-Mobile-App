@@ -163,9 +163,10 @@ class AppRouter {
             path: '$eventPath/details/:eventId',
             builder: (context, state) {
               final eventId = state.pathParameters['eventId']!;
-              final currentUser = context.read<UserModel?>();
+              final currentUser = context.watch<UserModel?>();
 
               return ChangeNotifierProvider(
+                key: ValueKey('$eventId-${currentUser?.uuid ?? ''}'),
                 create: (_) => EventDetailsViewModel(
                   eventService: context.read<EventService>(),
                   eventId: eventId,

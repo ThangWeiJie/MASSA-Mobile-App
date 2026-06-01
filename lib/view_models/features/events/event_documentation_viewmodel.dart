@@ -61,7 +61,10 @@ class EventDocumentationViewModel extends ChangeNotifier {
   }
 
   Stream<List<EventDocumentModel>> get documentsStream {
-    return repository.streamDocuments(eventId, parentFolderId: _currentFolderId);
+    return repository.streamDocuments(
+      eventId,
+      parentFolderId: _currentFolderId,
+    );
   }
 
   void _subscribeToDocuments() {
@@ -89,19 +92,21 @@ class EventDocumentationViewModel extends ChangeNotifier {
     _isLoadingGallery = true;
     _galleryErrorMessage = null;
 
-    _gallerySubscription = repository.streamMediaDocuments(eventId).listen(
-      (documents) {
-        _mediaFiles = documents;
-        _isLoadingGallery = false;
-        notifyListeners();
-      },
-      onError: (error) {
-        _galleryErrorMessage = _friendlyErrorMessage(error);
-        _mediaFiles = [];
-        _isLoadingGallery = false;
-        notifyListeners();
-      },
-    );
+    _gallerySubscription = repository
+        .streamMediaDocuments(eventId)
+        .listen(
+          (documents) {
+            _mediaFiles = documents;
+            _isLoadingGallery = false;
+            notifyListeners();
+          },
+          onError: (error) {
+            _galleryErrorMessage = _friendlyErrorMessage(error);
+            _mediaFiles = [];
+            _isLoadingGallery = false;
+            notifyListeners();
+          },
+        );
   }
 
   String _friendlyErrorMessage(Object? error) {
@@ -115,6 +120,7 @@ class EventDocumentationViewModel extends ChangeNotifier {
   Future<bool> pickAndUploadDocument({
     bool useCurrentFolder = true,
     bool mediaOnly = false,
+    String? destinationFolderId,
   }) async {
     _setLoading(true);
     _errorMessage = null;
@@ -139,7 +145,8 @@ class EventDocumentationViewModel extends ChangeNotifier {
 
       final fileName = pickedFile.name;
       final fileExtension = pickedFile.extension?.toLowerCase() ?? '';
-      final parentFolderId = useCurrentFolder ? _currentFolderId : null;
+      final parentFolderId =
+          destinationFolderId ?? (useCurrentFolder ? _currentFolderId : null);
       final uploadResult = await repository.uploadFile(
         eventId: eventId,
         fileName: fileName,
@@ -197,6 +204,10 @@ class EventDocumentationViewModel extends ChangeNotifier {
     }
   }
 
+  Future<List<EventDocumentModel>> fetchFolders() {
+    return repository.fetchFolders(eventId);
+  }
+
   Future<bool> renameDocument({
     required EventDocumentModel document,
     required String newName,
@@ -211,7 +222,9 @@ class EventDocumentationViewModel extends ChangeNotifier {
         newName: newName,
       );
 
-      final stackIndex = _folderStack.indexWhere((item) => item.id == document.id);
+      final stackIndex = _folderStack.indexWhere(
+        (item) => item.id == document.id,
+      );
       if (stackIndex != -1) {
         _folderStack[stackIndex] = EventDocumentModel(
           id: document.id,
@@ -230,6 +243,29 @@ class EventDocumentationViewModel extends ChangeNotifier {
       return true;
     } catch (e) {
       _errorMessage = 'Failed to rename item: $e';
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> moveDocument({
+    required EventDocumentModel document,
+    required String? parentFolderId,
+  }) async {
+    _setLoading(true);
+    _errorMessage = null;
+
+    try {
+      await repository.moveDocument(
+        eventId: eventId,
+        documentId: document.id,
+        parentFolderId: parentFolderId,
+      );
+
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to move item: $e';
       return false;
     } finally {
       _setLoading(false);

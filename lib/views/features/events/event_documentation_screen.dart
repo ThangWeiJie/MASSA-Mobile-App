@@ -91,7 +91,9 @@ class _EventDocumentationScreenState extends State<EventDocumentationScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          onPressed: viewModel.isLoading ? null : () => _handleFabPressed(context),
+          onPressed: viewModel.isLoading
+              ? null
+              : () => _handleFabPressed(context),
           child: Icon(_isDocumentsTab ? Icons.add : Icons.add_photo_alternate),
         ),
       ),
@@ -211,17 +213,24 @@ class _EventDocumentationScreenState extends State<EventDocumentationScreen>
     final message = success
         ? 'File uploaded successfully.'
         : 'Upload failed or cancelled.';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _uploadGalleryMedia(BuildContext context) async {
+    final destination = await _showFolderDestinationPicker(
+      context: context,
+      title: 'Save media to',
+    );
+    if (!context.mounted || destination == null) return;
+
     final success = await context
         .read<EventDocumentationViewModel>()
         .pickAndUploadDocument(
-          useCurrentFolder: false,
           mediaOnly: true,
+          useCurrentFolder: false,
+          destinationFolderId: destination.folderId,
         );
     if (!context.mounted) return;
 
@@ -229,7 +238,7 @@ class _EventDocumentationScreenState extends State<EventDocumentationScreen>
       SnackBar(
         content: Text(
           success
-              ? 'Media uploaded to Gallery.'
+              ? 'Media uploaded to ${destination.name}.'
               : 'Upload failed or cancelled.',
         ),
       ),
@@ -253,7 +262,9 @@ class _EventDocumentationScreenState extends State<EventDocumentationScreen>
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(success ? 'Folder created.' : 'Could not create folder.')),
+      SnackBar(
+        content: Text(success ? 'Folder created.' : 'Could not create folder.'),
+      ),
     );
   }
 }
@@ -410,7 +421,10 @@ class _DocumentFileRow extends StatelessWidget {
                           : 'Uploaded $dateText by ${document.uploadedBy}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black54, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -424,6 +438,11 @@ class _DocumentFileRow extends StatelessWidget {
                       value: _DocumentAction.open,
                       child: Text('Open'),
                     ),
+                  if (!document.isFolder)
+                    const PopupMenuItem(
+                      value: _DocumentAction.move,
+                      child: Text('Move'),
+                    ),
                   const PopupMenuItem(
                     value: _DocumentAction.rename,
                     child: Text('Rename'),
@@ -432,7 +451,9 @@ class _DocumentFileRow extends StatelessWidget {
                     value: _DocumentAction.delete,
                     child: Text(
                       'Delete',
-                      style: TextStyle(color: EventDocumentationScreen._primaryRed),
+                      style: TextStyle(
+                        color: EventDocumentationScreen._primaryRed,
+                      ),
                     ),
                   ),
                 ],
@@ -479,6 +500,11 @@ class _DocumentFileRow extends StatelessWidget {
 
     if (action == _DocumentAction.delete) {
       await viewModel.deleteDocument(document);
+      return;
+    }
+
+    if (action == _DocumentAction.move) {
+      await _moveDocument(context, document);
       return;
     }
 
@@ -579,6 +605,10 @@ class _MediaTile extends StatelessWidget {
                           child: Text('Open'),
                         ),
                         PopupMenuItem(
+                          value: _DocumentAction.move,
+                          child: Text('Move'),
+                        ),
+                        PopupMenuItem(
                           value: _DocumentAction.rename,
                           child: Text('Rename'),
                         ),
@@ -619,9 +649,13 @@ class _MediaTile extends StatelessWidget {
   }
 
   static bool _isVideo(String extension) {
-    return {'mp4', 'mov', 'avi', 'mkv', 'webm'}.contains(
-      extension.toLowerCase(),
-    );
+    return {
+      'mp4',
+      'mov',
+      'avi',
+      'mkv',
+      'webm',
+    }.contains(extension.toLowerCase());
   }
 
   Future<void> _handleAction(
@@ -632,6 +666,11 @@ class _MediaTile extends StatelessWidget {
 
     if (action == _DocumentAction.delete) {
       await viewModel.deleteDocument(media);
+      return;
+    }
+
+    if (action == _DocumentAction.move) {
+      await _moveDocument(context, media);
       return;
     }
 
@@ -710,13 +749,169 @@ class _ErrorState extends StatelessWidget {
 
 enum _AddAction { folder, file }
 
-enum _DocumentAction { open, rename, delete }
+enum _DocumentAction { open, move, rename, delete }
+
+class _FolderDestination {
+  const _FolderDestination({
+    required this.name,
+    required this.folderId,
+    this.subtitle,
+  });
+
+  final String name;
+  final String? folderId;
+  final String? subtitle;
+}
 
 Future<void> _launchDocument(String fileUrl) async {
   final uri = Uri.tryParse(fileUrl);
   if (uri != null) {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
+}
+
+Future<void> _moveDocument(
+  BuildContext context,
+  EventDocumentModel document,
+) async {
+  final destination = await _showFolderDestinationPicker(
+    context: context,
+    title: 'Move to',
+  );
+  if (!context.mounted || destination == null) return;
+
+  final success = await context
+      .read<EventDocumentationViewModel>()
+      .moveDocument(document: document, parentFolderId: destination.folderId);
+  if (!context.mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        success ? 'Moved to ${destination.name}.' : 'Could not move item.',
+      ),
+    ),
+  );
+}
+
+Future<_FolderDestination?> _showFolderDestinationPicker({
+  required BuildContext context,
+  required String title,
+}) async {
+  final viewModel = context.read<EventDocumentationViewModel>();
+
+  List<EventDocumentModel> folders;
+  try {
+    folders = await viewModel.fetchFolders();
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not load folders.')));
+    }
+    return null;
+  }
+
+  if (!context.mounted) return null;
+
+  final folderById = {for (final folder in folders) folder.id: folder};
+  String folderPath(EventDocumentModel folder) {
+    final segments = <String>[folder.fileName];
+    final visitedFolderIds = <String>{folder.id};
+    var parentId = folder.parentFolderId;
+
+    while (parentId != null && !visitedFolderIds.contains(parentId)) {
+      final parent = folderById[parentId];
+      if (parent == null) break;
+
+      segments.insert(0, parent.fileName);
+      visitedFolderIds.add(parent.id);
+      parentId = parent.parentFolderId;
+    }
+
+    return segments.join(' / ');
+  }
+
+  final destinations = [
+    const _FolderDestination(name: 'Documents root', folderId: null),
+    ...folders.map((folder) {
+      final path = folderPath(folder);
+      return _FolderDestination(
+        name: folder.fileName,
+        folderId: folder.id,
+        subtitle: path == folder.fileName ? null : path,
+      );
+    }),
+  ];
+
+  return showModalBottomSheet<_FolderDestination>(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    showDragHandle: true,
+    builder: (context) {
+      return SafeArea(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: EventDocumentationScreen._textColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: destinations.length,
+                  itemBuilder: (context, index) {
+                    final destination = destinations[index];
+                    final isRoot = destination.folderId == null;
+
+                    return ListTile(
+                      leading: Icon(
+                        isRoot
+                            ? Icons.home_work_outlined
+                            : Icons.folder_rounded,
+                        color: EventDocumentationScreen._primaryRed,
+                      ),
+                      title: Text(
+                        destination.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: destination.subtitle == null
+                          ? null
+                          : Text(
+                              destination.subtitle!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                      onTap: () => Navigator.of(context).pop(destination),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 Future<String?> _showNameDialog({
