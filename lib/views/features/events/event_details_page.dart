@@ -223,7 +223,8 @@ class EventDetailsPage extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (canManageEvent) _buildAdminActions(context, viewModel),
+                      if (canManageEvent)
+                        _buildAdminActions(context, viewModel),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -663,6 +664,12 @@ class EventDetailsPage extends StatelessWidget {
                   ? null
                   : () async {
                       final registering = !viewModel.isUserRegistered;
+                      if (!registering) {
+                        final shouldUnregister =
+                            await _showUnregisterConfirmDialog(context);
+                        if (!shouldUnregister) return;
+                      }
+
                       try {
                         await viewModel.toggleRegistration();
                         if (context.mounted) {
@@ -712,6 +719,35 @@ class EventDetailsPage extends StatelessWidget {
               ),
             ),
     );
+  }
+
+  Future<bool> _showUnregisterConfirmDialog(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Unregister from event?'),
+        content: const Text(
+          'Your registration will be removed from this event.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Unregister'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
   }
 
   Widget _buildCrewApplicationAction(
@@ -1143,10 +1179,7 @@ class EventDetailsPage extends StatelessWidget {
           children: [
             Icon(Icons.event_outlined, color: Colors.orange[800], size: 20),
             const SizedBox(width: 10),
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
             const Spacer(),
             Flexible(
               flex: 3,

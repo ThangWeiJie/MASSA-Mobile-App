@@ -13,6 +13,8 @@ class UserModel {
   final String department;
   final String organizationRole;
   final String? fcmToken;
+  final String profileImageUrl;
+  final String profileImageStoragePath;
 
   String get getUUID => uuid;
 
@@ -27,7 +29,9 @@ class UserModel {
     this.phone = '',
     this.department = '',
     this.organizationRole = '',
-    this.fcmToken
+    this.fcmToken,
+    this.profileImageUrl = '',
+    this.profileImageStoragePath = '',
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String id) {
@@ -45,6 +49,8 @@ class UserModel {
           data['excoPosition'] ??
           data['position'] ??
           '',
+      profileImageUrl: data['profileImageUrl'] ?? '',
+      profileImageStoragePath: data['profileImageStoragePath'] ?? '',
       memberSince: data['memberSince'] != null
           ? (data['memberSince'] as Timestamp).toDate()
           : null,
@@ -66,6 +72,8 @@ class UserModel {
       'department': department,
       'organizationRole': organizationRole,
       'memberSince': memberSince,
+      'profileImageUrl': profileImageUrl,
+      'profileImageStoragePath': profileImageStoragePath,
     };
   }
 }

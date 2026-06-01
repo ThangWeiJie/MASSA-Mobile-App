@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -485,53 +486,49 @@ class EventRepository {
 
     try {
       await _firestore.runTransaction((transaction) async {
-        try {
-          // 1. READ: Get Event Data and User Data
-          DocumentSnapshot eventSnap = await transaction.get(eventRef);
-          DocumentSnapshot userSnap = await transaction.get(userRef);
-          final participantSnap = await transaction.get(participantRef);
+        // 1. READ: Get Event Data and User Data
+        DocumentSnapshot eventSnap = await transaction.get(eventRef);
+        DocumentSnapshot userSnap = await transaction.get(userRef);
+        final participantSnap = await transaction.get(participantRef);
 
-          if (!eventSnap.exists) throw Exception("Event not found");
-          if (!userSnap.exists) throw Exception("User profile not found");
+        if (!eventSnap.exists) throw Exception("Event not found");
+        if (!userSnap.exists) throw Exception("User profile not found");
 
-          final eventData = eventSnap.data() as Map<String, dynamic>;
-          final userData = userSnap.data() as Map<String, dynamic>;
+        final eventData = eventSnap.data() as Map<String, dynamic>;
+        final userData = userSnap.data() as Map<String, dynamic>;
 
-          int currentCount = (eventData['registeredCount'] as num? ?? 0)
-              .toInt();
-          int capacity = (eventData['capacity'] as num? ?? 100).toInt();
-          bool alreadyRegistered = participantSnap.exists;
+        int currentCount = (eventData['registeredCount'] as num? ?? 0).toInt();
+        int capacity = (eventData['capacity'] as num? ?? 100).toInt();
+        bool alreadyRegistered = participantSnap.exists;
 
-          // 2. LOGIC & WRITE
-          if (isRegistering) {
-            if (alreadyRegistered) return;
+        // 2. LOGIC & WRITE
+        if (isRegistering) {
+          if (alreadyRegistered) return;
 
-            if (currentCount >= capacity) throw Exception("Event is full!");
+          if (currentCount >= capacity) throw Exception("Event is full!");
 
-            transaction.update(eventRef, {'registeredCount': currentCount + 1});
-            transaction.set(participantRef, {
-              'userId': userId,
-              'fullName': userData['fullName'] ?? 'Unknown Student',
-              'matricNumber': userData['matricNumber'] ?? 'N/A',
-              'joinedAt': FieldValue.serverTimestamp(),
-            });
-          } else {
-            if (!alreadyRegistered) return;
+          transaction.update(eventRef, {'registeredCount': currentCount + 1});
+          transaction.set(participantRef, {
+            'userId': userId,
+            'fullName': userData['fullName'] ?? 'Unknown Student',
+            'matricNumber': userData['matricNumber'] ?? 'N/A',
+            'joinedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          if (!alreadyRegistered) return;
 
-            transaction.update(eventRef, {
-              'registeredCount': (currentCount - 1).clamp(0, capacity),
-            });
-            transaction.delete(participantRef);
-          }
-        } catch (e, stack) {
-          developer.log(
-            'Registration transaction failed',
-            error: e,
-            stackTrace: stack,
-          );
+          transaction.update(eventRef, {
+            'registeredCount': ((currentCount - 1).clamp(0, capacity)).toInt(),
+          });
+          transaction.delete(participantRef);
         }
       });
-    } on Exception {
+    } catch (e, stack) {
+      developer.log(
+        'Registration transaction failed',
+        error: e,
+        stackTrace: stack,
+      );
       rethrow;
     }
   }
@@ -609,33 +606,129 @@ class EventRepository {
   }
 
   Stream<List<String>> streamRegisteredEventIds(String userId) {
-    return _firestore
-        .collectionGroup('participants')
-        .where('userId', isEqualTo: userId)
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            return doc.reference.parent.parent!.id;
-          }).toList();
-        });
+    late StreamController<List<String>> controller;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? eventsSubscription;
+    final participantSubscriptions =
+        <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
+    final registeredEventIds = <String>{};
+    var activeEventIds = <String>{};
+
+    void emitRegisteredIds() {
+      if (!controller.isClosed) {
+        controller.add(registeredEventIds.toList());
+      }
+    }
+
+    void syncParticipantSubscriptions(
+      QuerySnapshot<Map<String, dynamic>> snapshot,
+    ) {
+      final nextEventIds = snapshot.docs.map((doc) => doc.id).toSet();
+
+      for (final removedEventId in activeEventIds.difference(nextEventIds)) {
+        participantSubscriptions.remove(removedEventId)?.cancel();
+        registeredEventIds.remove(removedEventId);
+      }
+
+      for (final eventId in nextEventIds.difference(activeEventIds)) {
+        participantSubscriptions[eventId] = _firestore
+            .collection('events')
+            .doc(eventId)
+            .collection('participants')
+            .doc(userId)
+            .snapshots()
+            .listen(
+              (participantDoc) {
+                if (participantDoc.exists) {
+                  registeredEventIds.add(eventId);
+                } else {
+                  registeredEventIds.remove(eventId);
+                }
+                emitRegisteredIds();
+              },
+              onError: (error, stackTrace) {
+                developer.log(
+                  'Registered event participant stream failed',
+                  error: error,
+                  stackTrace: stackTrace,
+                );
+                registeredEventIds.remove(eventId);
+                emitRegisteredIds();
+              },
+            );
+      }
+
+      activeEventIds = nextEventIds;
+      emitRegisteredIds();
+    }
+
+    controller = StreamController<List<String>>(
+      onListen: () {
+        eventsSubscription = _firestore
+            .collection('events')
+            .snapshots()
+            .listen(syncParticipantSubscriptions, onError: controller.addError);
+      },
+      onCancel: () async {
+        await eventsSubscription?.cancel();
+        for (final subscription in participantSubscriptions.values) {
+          await subscription.cancel();
+        }
+        participantSubscriptions.clear();
+      },
+    );
+
+    return controller.stream;
   }
 
   Future<List<String>> getRegisteredEventIds(String userId) async {
     try {
-      // This query looks for the user's ID within the participants subcollection
-      // across all events using a Group Query.
+      return _getParticipantEventIds(userId);
+    } catch (e) {
+      throw Exception("Failed to fetch registered events: $e");
+    }
+  }
+
+  Future<List<String>> _getParticipantEventIds(String userId) async {
+    // This query looks for the user's ID within the participants subcollection
+    // across all events using a Group Query.
+    try {
       final snapshot = await _firestore
           .collectionGroup('participants')
           .where('userId', isEqualTo: userId)
           .get();
 
       return snapshot.docs.map((doc) {
-        // The parent of the participant document is the 'participants' collection,
-        // and the parent of that is the specific 'event' document.
+        // The parent of the participant document is the 'participants'
+        // collection, and the parent of that is the specific event document.
         return doc.reference.parent.parent!.id;
       }).toList();
-    } catch (e) {
-      throw Exception("Failed to fetch registered events: $e");
+    } catch (e, stack) {
+      developer.log(
+        'Registered events collection group query failed',
+        error: e,
+        stackTrace: stack,
+      );
+      return _getParticipantEventIdsByScanningEvents(userId);
     }
+  }
+
+  Future<List<String>> _getParticipantEventIdsByScanningEvents(
+    String userId,
+  ) async {
+    final eventsSnapshot = await _firestore.collection('events').get();
+    final eventIds = <String>[];
+
+    for (final eventDoc in eventsSnapshot.docs) {
+      final participantDoc = await eventDoc.reference
+          .collection('participants')
+          .doc(userId)
+          .get();
+
+      if (participantDoc.exists) {
+        eventIds.add(eventDoc.id);
+      }
+    }
+
+    return eventIds;
   }
 }

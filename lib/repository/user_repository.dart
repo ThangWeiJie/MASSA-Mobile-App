@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:massa/models/user.dart';
 
 import '../enums/role_enum.dart';
 
 class UserRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Stream<UserModel?> get userStream {
     late StreamController<UserModel?> controller;
@@ -243,6 +246,40 @@ class UserRepository {
     });
   }
 
+  Future<void> updateUserProfileImage({
+    required String userId,
+    required String fileName,
+    required Uint8List fileBytes,
+    String? previousStoragePath,
+    String? contentType,
+  }) async {
+    final safeFileName = _sanitizeFileName(fileName);
+    final storagePath =
+        'profile_images/$userId/${DateTime.now().millisecondsSinceEpoch}_$safeFileName';
+    final imageRef = _storage.ref().child(storagePath);
+    final uploadTask = await imageRef.putData(
+      fileBytes,
+      SettableMetadata(contentType: contentType),
+    );
+    final imageUrl = await uploadTask.ref.getDownloadURL();
+
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'profileImageUrl': imageUrl,
+        'profileImageStoragePath': storagePath,
+      });
+    } catch (_) {
+      await _deleteStorageFile(storagePath);
+      rethrow;
+    }
+
+    if (previousStoragePath != null &&
+        previousStoragePath.isNotEmpty &&
+        previousStoragePath != storagePath) {
+      await _deleteStorageFile(previousStoragePath);
+    }
+  }
+
   Future<void> adminUpdateUserProfile({
     required String userId,
     required String fullName,
@@ -259,9 +296,24 @@ class UserRepository {
   }
 
   Future<void> updateFcmToken(String uid, String? token) async {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .update({'fcmToken': token});
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'fcmToken': token,
+    });
+  }
+
+  Future<void> _deleteStorageFile(String storagePath) async {
+    try {
+      await _storage.ref().child(storagePath).delete();
+    } on FirebaseException catch (e) {
+      if (e.code != 'object-not-found') {
+        rethrow;
+      }
+    }
+  }
+
+  String _sanitizeFileName(String fileName) {
+    final trimmed = fileName.trim();
+    final normalized = trimmed.isEmpty ? 'profile_image' : trimmed;
+    return normalized.replaceAll(RegExp(r'[\\/#?%*:|"<>]'), '_');
   }
 }

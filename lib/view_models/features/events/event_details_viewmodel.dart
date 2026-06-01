@@ -118,7 +118,15 @@ class EventDetailsViewModel extends ChangeNotifier {
   }
 
   Future<void> toggleRegistration() async {
-    if (_event == null || currentUserId == null || _isActionLoading) return;
+    if (_event == null) {
+      throw Exception('Event is not available.');
+    }
+
+    if (currentUserId == null || currentUserId!.isEmpty) {
+      throw Exception('Please sign in again before registering.');
+    }
+
+    if (_isActionLoading) return;
 
     try {
       _isActionLoading = true;
