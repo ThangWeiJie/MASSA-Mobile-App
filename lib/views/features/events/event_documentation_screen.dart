@@ -1,119 +1,151 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:massa/models/event_document_model.dart'; //
-import 'package:massa/view_models/features/events/event_documentation_viewmodel.dart'; //
+import 'package:massa/models/event_document_model.dart';
+import 'package:massa/view_models/features/events/event_documentation_viewmodel.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class EventDocumentationScreen extends StatelessWidget {
+class EventDocumentationScreen extends StatefulWidget {
   const EventDocumentationScreen({super.key});
 
-  // MASSA Theme Colors
   static const Color _backgroundColor = Color(0xFFFFFBF0);
-  static const Color _massaBrown = Colors.brown; 
-  static const Color _massaOrange = Color(0xFFEA580C); 
+  static const Color _primaryRed = Color(0xFFCE1126);
+  static const Color _textColor = Color(0xFF3A1F16);
+
+  @override
+  State<EventDocumentationScreen> createState() =>
+      _EventDocumentationScreenState();
+}
+
+class _EventDocumentationScreenState extends State<EventDocumentationScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  int _activeTabIndex = 0;
+
+  bool get _isDocumentsTab => _activeTabIndex == 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_handleTabChanged);
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_handleTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _handleTabChanged() {
+    if (_activeTabIndex == _tabController.index) return;
+
+    setState(() {
+      _activeTabIndex = _tabController.index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<EventDocumentationViewModel>(); //
+    final viewModel = context.watch<EventDocumentationViewModel>();
+    final title = _isDocumentsTab
+        ? viewModel.currentFolderName
+        : 'Event Gallery';
 
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: EventDocumentationScreen._backgroundColor,
       appBar: AppBar(
-        backgroundColor: _backgroundColor,
-        foregroundColor: _massaBrown,
+        backgroundColor: EventDocumentationScreen._backgroundColor,
+        foregroundColor: EventDocumentationScreen._textColor,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () {
-            final handledByFolder =
-                context.read<EventDocumentationViewModel>().goBackFolder(); //
-
-            if (!handledByFolder) {
-              Navigator.of(context).pop();
-            }
-          },
+          onPressed: () => _handleBackPressed(context),
         ),
         title: Text(
-          viewModel.currentFolderName, //
+          title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: EventDocumentationScreen._primaryRed,
+          indicatorWeight: 3,
+          labelColor: EventDocumentationScreen._primaryRed,
+          unselectedLabelColor: Colors.black54,
+          tabs: const [
+            Tab(icon: Icon(Icons.description_outlined), text: 'Documents'),
+            Tab(icon: Icon(Icons.photo_library_outlined), text: 'Gallery'),
+          ],
+        ),
       ),
-      // Fixed: Padded to sit above the Bottom Navigation Bar
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 110.0), 
+        padding: const EdgeInsets.only(bottom: 110),
         child: FloatingActionButton(
-          backgroundColor: _massaOrange,
+          backgroundColor: EventDocumentationScreen._primaryRed,
           foregroundColor: Colors.white,
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          onPressed: viewModel.isLoading
-              ? null
-              : () => _showAddOptions(context), //
-          child: const Icon(Icons.add, size: 30),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          onPressed: viewModel.isLoading ? null : () => _handleFabPressed(context),
+          child: Icon(_isDocumentsTab ? Icons.add : Icons.add_photo_alternate),
         ),
       ),
       body: Stack(
         children: [
-          StreamBuilder<List<EventDocumentModel>>(
-            stream: viewModel.documentsStream, //
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: _massaOrange));
-              }
-
-              if (snapshot.hasError) {
-                final message = _friendlyErrorMessage(snapshot.error); //
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      message,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: _massaBrown, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                );
-              }
-
-              final documents = snapshot.data ?? [];
-
-              if (documents.isEmpty) {
-                return _EmptyDocumentationState(
-                  isInsideFolder: viewModel.isInsideFolder, //
-                );
-              }
-
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 130), 
-                itemBuilder: (context, index) {
-                  return _DocumentListItem(document: documents[index]); //
-                },
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemCount: documents.length,
-              );
-            },
+          TabBarView(
+            controller: _tabController,
+            children: [
+              _DocumentsTab(
+                files: viewModel.documentFiles,
+                isInsideFolder: viewModel.isInsideFolder,
+                isLoading: viewModel.isLoadingDocuments,
+                errorMessage: viewModel.documentsErrorMessage,
+              ),
+              _GalleryTab(
+                files: viewModel.mediaFiles,
+                isLoading: viewModel.isLoadingGallery,
+                errorMessage: viewModel.galleryErrorMessage,
+              ),
+            ],
           ),
-          if (viewModel.isLoading) //
+          if (viewModel.isLoading)
             Container(
-              color: Colors.black.withOpacity(0.18),
-              child: const Center(child: CircularProgressIndicator(color: _massaOrange)),
+              color: Colors.black.withValues(alpha: 0.18),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: EventDocumentationScreen._primaryRed,
+                ),
+              ),
             ),
         ],
       ),
     );
   }
 
-  String _friendlyErrorMessage(Object? error) {
-    final errorText = error.toString().toLowerCase();
-    if (errorText.contains('permission-denied')) {
-      return 'Documentation is not available yet.\nPlease update the Firestore permissions for event documents.';
+  void _handleBackPressed(BuildContext context) {
+    if (_isDocumentsTab) {
+      final handledByFolder = context
+          .read<EventDocumentationViewModel>()
+          .goBackFolder();
+
+      if (handledByFolder) return;
     }
-    return 'Unable to load documents.\nPlease try again later.';
+
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _handleFabPressed(BuildContext context) async {
+    if (_isDocumentsTab) {
+      await _showAddOptions(context);
+      return;
+    }
+
+    await _uploadGalleryMedia(context);
   }
 
   Future<void> _showAddOptions(BuildContext context) async {
@@ -130,13 +162,25 @@ class EventDocumentationScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.create_new_folder, color: _massaBrown),
-                title: const Text('Create folder', style: TextStyle(fontWeight: FontWeight.w600)),
+                leading: const Icon(
+                  Icons.create_new_folder,
+                  color: EventDocumentationScreen._primaryRed,
+                ),
+                title: const Text(
+                  'Create folder',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 onTap: () => Navigator.of(context).pop(_AddAction.folder),
               ),
               ListTile(
-                leading: const Icon(Icons.upload_file, color: _massaBrown),
-                title: const Text('Upload file', style: TextStyle(fontWeight: FontWeight.w600)),
+                leading: const Icon(
+                  Icons.upload_file,
+                  color: EventDocumentationScreen._primaryRed,
+                ),
+                title: const Text(
+                  'Upload file',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 onTap: () => Navigator.of(context).pop(_AddAction.file),
               ),
               const SizedBox(height: 12),
@@ -159,10 +203,37 @@ class EventDocumentationScreen extends StatelessWidget {
   }
 
   Future<void> _uploadFile(BuildContext context) async {
-    final success = await context.read<EventDocumentationViewModel>().pickAndUploadDocument(); //
+    final success = await context
+        .read<EventDocumentationViewModel>()
+        .pickAndUploadDocument();
     if (!context.mounted) return;
-    final message = success ? 'Document uploaded successfully.' : 'Upload failed or cancelled.';
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+
+    final message = success
+        ? 'File uploaded successfully.'
+        : 'Upload failed or cancelled.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _uploadGalleryMedia(BuildContext context) async {
+    final success = await context
+        .read<EventDocumentationViewModel>()
+        .pickAndUploadDocument(
+          useCurrentFolder: false,
+          mediaOnly: true,
+        );
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Media uploaded to Gallery.'
+              : 'Upload failed or cancelled.',
+        ),
+      ),
+    );
   }
 
   Future<void> _createFolder(BuildContext context) async {
@@ -175,55 +246,199 @@ class EventDocumentationScreen extends StatelessWidget {
     );
 
     if (!context.mounted || folderName == null) return;
-    final success = await context.read<EventDocumentationViewModel>().createFolder(folderName: folderName); //
+
+    final success = await context
+        .read<EventDocumentationViewModel>()
+        .createFolder(folderName: folderName);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success ? 'Folder created.' : 'Could not create folder.')));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(success ? 'Folder created.' : 'Could not create folder.')),
+    );
   }
 }
 
-// --- List Items and Sub-widgets ---
+class _DocumentsTab extends StatelessWidget {
+  const _DocumentsTab({
+    required this.files,
+    required this.isInsideFolder,
+    required this.isLoading,
+    required this.errorMessage,
+  });
 
-class _DocumentListItem extends StatelessWidget {
-  const _DocumentListItem({required this.document});
+  final List<EventDocumentModel> files;
+  final bool isInsideFolder;
+  final bool isLoading;
+  final String? errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: EventDocumentationScreen._primaryRed,
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return _ErrorState(message: errorMessage!);
+    }
+
+    if (files.isEmpty) {
+      return _EmptyTabState(
+        icon: isInsideFolder
+            ? Icons.folder_open_rounded
+            : Icons.description_outlined,
+        message: isInsideFolder
+            ? 'This folder is empty.'
+            : 'No documents uploaded yet.',
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 130),
+      itemCount: files.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        return _DocumentFileRow(document: files[index]);
+      },
+    );
+  }
+}
+
+class _GalleryTab extends StatelessWidget {
+  const _GalleryTab({
+    required this.files,
+    required this.isLoading,
+    required this.errorMessage,
+  });
+
+  final List<EventDocumentModel> files;
+  final bool isLoading;
+  final String? errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: EventDocumentationScreen._primaryRed,
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return _ErrorState(message: errorMessage!);
+    }
+
+    if (files.isEmpty) {
+      return const _EmptyTabState(
+        icon: Icons.photo_library_outlined,
+        message: 'No media uploaded yet.',
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 130),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+      ),
+      itemCount: files.length,
+      itemBuilder: (context, index) {
+        return _MediaTile(media: files[index]);
+      },
+    );
+  }
+}
+
+class _DocumentFileRow extends StatelessWidget {
+  const _DocumentFileRow({required this.document});
+
   final EventDocumentModel document;
 
   @override
   Widget build(BuildContext context) {
     final dateText = DateFormat('d MMM y').format(document.uploadedAt);
-    final viewModel = context.read<EventDocumentationViewModel>();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () => _openItem(context),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: (document.isFolder ? Colors.orange : Colors.red).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: EventDocumentationScreen._primaryRed.withValues(
+                    alpha: 0.1,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  document.isFolder
+                      ? Icons.folder_rounded
+                      : _iconForExtension(document.fileExtension),
+                  color: EventDocumentationScreen._primaryRed,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      document.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: EventDocumentationScreen._textColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      document.isFolder
+                          ? 'Folder'
+                          : 'Uploaded $dateText by ${document.uploadedBy}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.black54, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<_DocumentAction>(
+                icon: const Icon(Icons.more_vert, color: Colors.black54),
+                onSelected: (action) => _handleAction(context, action),
+                itemBuilder: (context) => [
+                  if (!document.isFolder)
+                    const PopupMenuItem(
+                      value: _DocumentAction.open,
+                      child: Text('Open'),
+                    ),
+                  const PopupMenuItem(
+                    value: _DocumentAction.rename,
+                    child: Text('Rename'),
+                  ),
+                  const PopupMenuItem(
+                    value: _DocumentAction.delete,
+                    child: Text(
+                      'Delete',
+                      style: TextStyle(color: EventDocumentationScreen._primaryRed),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          child: Icon(
-            document.isFolder ? Icons.folder_rounded : _iconForExtension(document.fileExtension),
-            color: document.isFolder ? Colors.orange[800] : Colors.red[800],
-          ),
-        ),
-        title: Text(document.fileName, style: const TextStyle(color: Colors.brown, fontWeight: FontWeight.bold)),
-        subtitle: Text('By ${document.uploadedBy} • $dateText', style: const TextStyle(fontSize: 12)),
-        trailing: PopupMenuButton<_DocumentAction>(
-          icon: const Icon(Icons.more_vert, color: Colors.brown),
-          onSelected: (action) => _handleAction(context, action),
-          itemBuilder: (context) => [
-            if (!document.isFolder) const PopupMenuItem(value: _DocumentAction.open, child: Text('Open')),
-            const PopupMenuItem(value: _DocumentAction.rename, child: Text('Rename')),
-            const PopupMenuItem(value: _DocumentAction.delete, child: Text('Delete', style: TextStyle(color: Colors.red))),
-          ],
         ),
       ),
     );
@@ -231,39 +446,219 @@ class _DocumentListItem extends StatelessWidget {
 
   static IconData _iconForExtension(String extension) {
     switch (extension.toLowerCase()) {
-      case 'pdf': return Icons.picture_as_pdf;
-      case 'jpg': case 'jpeg': case 'png': return Icons.image;
-      case 'doc': case 'docx': return Icons.description;
-      case 'xls': case 'xlsx': return Icons.table_chart;
-      default: return Icons.insert_drive_file;
+      case 'pdf':
+        return Icons.picture_as_pdf_outlined;
+      case 'doc':
+      case 'docx':
+        return Icons.description_outlined;
+      case 'xls':
+      case 'xlsx':
+        return Icons.table_chart_outlined;
+      case 'ppt':
+      case 'pptx':
+        return Icons.slideshow_outlined;
+      default:
+        return Icons.insert_drive_file_outlined;
     }
   }
 
   Future<void> _openItem(BuildContext context) async {
     if (document.isFolder) {
-      context.read<EventDocumentationViewModel>().openFolder(document); //
+      context.read<EventDocumentationViewModel>().openFolder(document);
       return;
     }
-    final uri = Uri.tryParse(document.fileUrl);
-    if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    await _launchDocument(document.fileUrl);
   }
 
-  Future<void> _handleAction(BuildContext context, _DocumentAction action) async {
+  Future<void> _handleAction(
+    BuildContext context,
+    _DocumentAction action,
+  ) async {
     final viewModel = context.read<EventDocumentationViewModel>();
+
     if (action == _DocumentAction.delete) {
-      await viewModel.deleteDocument(document); //
-    } else if (action == _DocumentAction.rename) {
-      final name = await _showNameDialog(context: context, title: 'Rename', labelText: 'Name', initialValue: document.fileName, confirmText: 'Rename');
-      if (name != null) await viewModel.renameDocument(document: document, newName: name); //
-    } else if (action == _DocumentAction.open) {
-      _openItem(context);
+      await viewModel.deleteDocument(document);
+      return;
     }
+
+    if (action == _DocumentAction.rename) {
+      final name = await _showNameDialog(
+        context: context,
+        title: 'Rename',
+        labelText: 'Name',
+        initialValue: document.fileName,
+        confirmText: 'Rename',
+      );
+
+      if (name != null) {
+        await viewModel.renameDocument(document: document, newName: name);
+      }
+      return;
+    }
+
+    await _openItem(context);
   }
 }
 
-class _EmptyDocumentationState extends StatelessWidget {
-  const _EmptyDocumentationState({required this.isInsideFolder});
-  final bool isInsideFolder;
+class _MediaTile extends StatelessWidget {
+  const _MediaTile({required this.media});
+
+  final EventDocumentModel media;
+
+  @override
+  Widget build(BuildContext context) {
+    final isVideo = _isVideo(media.fileExtension);
+
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.zero,
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () => _launchDocument(media.fileUrl),
+        child: Column(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (isVideo)
+                    Container(
+                      color: EventDocumentationScreen._textColor.withValues(
+                        alpha: 0.1,
+                      ),
+                      child: const Icon(
+                        Icons.videocam_outlined,
+                        color: EventDocumentationScreen._primaryRed,
+                        size: 32,
+                      ),
+                    )
+                  else
+                    Image.network(
+                      media.fileUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: EventDocumentationScreen._textColor.withValues(
+                          alpha: 0.1,
+                        ),
+                        child: const Icon(
+                          Icons.broken_image_outlined,
+                          color: EventDocumentationScreen._primaryRed,
+                        ),
+                      ),
+                    ),
+                  if (isVideo)
+                    const Align(
+                      alignment: Alignment.center,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: PopupMenuButton<_DocumentAction>(
+                      icon: const Icon(Icons.more_vert, color: Colors.white),
+                      color: Colors.white,
+                      onSelected: (action) => _handleAction(context, action),
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(
+                          value: _DocumentAction.open,
+                          child: Text('Open'),
+                        ),
+                        PopupMenuItem(
+                          value: _DocumentAction.rename,
+                          child: Text('Rename'),
+                        ),
+                        PopupMenuItem(
+                          value: _DocumentAction.delete,
+                          child: Text(
+                            'Delete',
+                            style: TextStyle(
+                              color: EventDocumentationScreen._primaryRed,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 1,
+              child: Container(
+                width: double.infinity,
+                color: Colors.white,
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  media.fileName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.black, fontSize: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static bool _isVideo(String extension) {
+    return {'mp4', 'mov', 'avi', 'mkv', 'webm'}.contains(
+      extension.toLowerCase(),
+    );
+  }
+
+  Future<void> _handleAction(
+    BuildContext context,
+    _DocumentAction action,
+  ) async {
+    final viewModel = context.read<EventDocumentationViewModel>();
+
+    if (action == _DocumentAction.delete) {
+      await viewModel.deleteDocument(media);
+      return;
+    }
+
+    if (action == _DocumentAction.rename) {
+      final name = await _showNameDialog(
+        context: context,
+        title: 'Rename',
+        labelText: 'Name',
+        initialValue: media.fileName,
+        confirmText: 'Rename',
+      );
+
+      if (name != null) {
+        await viewModel.renameDocument(document: media, newName: name);
+      }
+      return;
+    }
+
+    await _launchDocument(media.fileUrl);
+  }
+}
+
+class _EmptyTabState extends StatelessWidget {
+  const _EmptyTabState({required this.icon, required this.message});
+
+  final IconData icon;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -271,11 +666,18 @@ class _EmptyDocumentationState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.folder_open_rounded, size: 80, color: Colors.brown.withOpacity(0.2)),
+          Icon(
+            icon,
+            size: 72,
+            color: EventDocumentationScreen._primaryRed.withValues(alpha: 0.25),
+          ),
           const SizedBox(height: 16),
           Text(
-            isInsideFolder ? 'This folder is empty.' : 'No documents uploaded yet.',
-            style: const TextStyle(color: Colors.black45, fontWeight: FontWeight.bold),
+            message,
+            style: const TextStyle(
+              color: Colors.black54,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -283,9 +685,39 @@ class _EmptyDocumentationState extends StatelessWidget {
   }
 }
 
-// Enum and Dialog Helpers
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: EventDocumentationScreen._textColor,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 enum _AddAction { folder, file }
+
 enum _DocumentAction { open, rename, delete }
+
+Future<void> _launchDocument(String fileUrl) async {
+  final uri = Uri.tryParse(fileUrl);
+  if (uri != null) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
 
 Future<String?> _showNameDialog({
   required BuildContext context,
@@ -296,31 +728,65 @@ Future<String?> _showNameDialog({
 }) async {
   return showDialog<String>(
     context: context,
-    builder: (context) => _NameDialog(title: title, labelText: labelText, initialValue: initialValue, confirmText: confirmText),
+    builder: (context) => _NameDialog(
+      title: title,
+      labelText: labelText,
+      initialValue: initialValue,
+      confirmText: confirmText,
+    ),
   );
 }
 
 class _NameDialog extends StatefulWidget {
-  const _NameDialog({required this.title, required this.labelText, required this.initialValue, required this.confirmText});
-  final String title, labelText, initialValue, confirmText;
+  const _NameDialog({
+    required this.title,
+    required this.labelText,
+    required this.initialValue,
+    required this.confirmText,
+  });
+
+  final String title;
+  final String labelText;
+  final String initialValue;
+  final String confirmText;
+
   @override
   State<_NameDialog> createState() => _NameDialogState();
 }
 
 class _NameDialogState extends State<_NameDialog> {
   late final TextEditingController _controller;
+
   @override
-  void initState() { super.initState(); _controller = TextEditingController(text: widget.initialValue); }
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
   @override
-  void dispose() { _controller.dispose(); super.dispose(); }
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.title),
-      content: TextField(controller: _controller, autofocus: true, decoration: InputDecoration(labelText: widget.labelText)),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(labelText: widget.labelText),
+      ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.of(context).pop(_controller.text.trim()), child: Text(widget.confirmText)),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: Text(widget.confirmText),
+        ),
       ],
     );
   }

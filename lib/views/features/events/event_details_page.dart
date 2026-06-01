@@ -51,6 +51,44 @@ class EventDetailsPage extends StatelessWidget {
       );
     }
 
+    final isPastEvent = event.endDateTime.isBefore(DateTime.now());
+    if (isPastEvent && !canManageEvent) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 56,
+                  color: Colors.amber[700],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Past event access is restricted",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Only EXCO and Admin members can view archived event details.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => context.go(eventPath),
+                  child: const Text("Back to Programs"),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(

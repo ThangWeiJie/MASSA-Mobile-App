@@ -16,6 +16,7 @@ class ProfileViewModel extends ChangeNotifier {
 
   ProfileViewModel({required UserRepository userRepo, required this.userId})
     : _userRepository = userRepo {
+      
     if (userId.isNotEmpty) {
       _listenToUser();
     } else {
