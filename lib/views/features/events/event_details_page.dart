@@ -608,6 +608,30 @@ class EventDetailsPage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
+          // =========================
+          // NEW TASK MANAGEMENT BUTTON
+          // =========================
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.push('/events/details/${event.id}/tasks');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[800],
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.task_alt, color: Colors.white),
+              label: const Text(
+                'Manage Tasks',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             height: 50,

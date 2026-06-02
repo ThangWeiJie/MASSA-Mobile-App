@@ -151,8 +151,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         Color dotColor = index % 3 == 0
             ? Colors.pink[400]!
             : index % 2 == 0
-                ? Colors.orange[500]!
-                : Colors.red[600]!;
+            ? Colors.orange[500]!
+            : Colors.red[600]!;
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
           width: 8,
@@ -504,6 +504,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget _buildFooter(BuildContext context, SignupViewModel viewModel) {
     return Column(
       children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Checkbox(
+              value: viewModel.agreeToTerms,
+              activeColor: Colors.orange[700],
+              onChanged: (value) {
+                viewModel.updateAgreeToTerms(value ?? false);
+              },
+            ),
+            Expanded(
+              child: Text(
+                "I agree to the terms and conditions",
+                style: TextStyle(color: Colors.black87, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
         Container(
           width: double.infinity,
           height: 48,
