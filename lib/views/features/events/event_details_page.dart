@@ -585,6 +585,46 @@ class EventDetailsPage extends StatelessWidget {
       children: [
         // Documentation management access for EXCO and Admin
         if (canManageDocumentation) ...[
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.push('/events/details/${event.id}/attendance/manage');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[800],
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.qr_code_2, color: Colors.white),
+              label: const Text(
+                'Generate Attendance QR',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                context.push('/events/details/${event.id}/attendees');
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange[900],
+                side: BorderSide(color: Colors.orange[700]!),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.fact_check_outlined),
+              label: const Text('View Attendance List'),
+            ),
+          ),
+          const SizedBox(height: 12),
           if (event.isCrewRegistrationOpen) ...[
             SizedBox(
               width: double.infinity,
@@ -635,6 +675,30 @@ class EventDetailsPage extends StatelessWidget {
         if (!canManageDocumentation) ...[
           if (event.isCrewRegistrationOpen) ...[
             _buildCrewApplicationAction(context, viewModel),
+            const SizedBox(height: 12),
+          ],
+          if (isRegistered) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  context.push('/events/details/${event.id}/attendance');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700],
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.how_to_reg_outlined),
+                label: const Text(
+                  'Mark Attendance',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
           ],
           _buildEventRegistrationButton(

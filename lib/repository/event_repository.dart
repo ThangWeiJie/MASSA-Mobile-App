@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:massa/enums/role_enum.dart';
+import 'package:massa/models/attendance_record.dart';
+import 'package:massa/models/attendance_session.dart';
 import 'package:massa/models/crew_application.dart';
 import 'package:massa/models/event.dart';
 import 'package:massa/models/event_image_upload.dart';
@@ -11,6 +15,7 @@ import 'package:massa/models/user.dart';
 class EventRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final Random _secureRandom = Random.secure();
 
   Future<void> createEvent({
     required String eventName,
@@ -603,6 +608,397 @@ class EventRepository {
         .orderBy('joinedAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
+  }
+
+  CollectionReference<Map<String, dynamic>> _attendanceSessionsCollection(
+    String eventId,
+  ) {
+    return _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('attendanceSessions');
+  }
+
+  CollectionReference<Map<String, dynamic>> _attendanceRecordsCollection(
+    String eventId,
+  ) {
+    return _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('attendanceRecords');
+  }
+
+  Stream<List<AttendanceSession>> streamAttendanceSessions(String eventId) {
+    return _attendanceSessionsCollection(eventId).snapshots().map((snapshot) {
+      final sessions = snapshot.docs
+          .map((doc) => AttendanceSession.fromMap(doc.data(), doc.id))
+          .toList();
+      sessions.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      return sessions;
+    });
+  }
+
+  Stream<List<AttendanceRecord>> streamAttendanceRecords(String eventId) {
+    return _attendanceRecordsCollection(eventId).snapshots().map((snapshot) {
+      final records = snapshot.docs
+          .map((doc) => AttendanceRecord.fromMap(doc.data(), doc.id))
+          .toList();
+      records.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+      return records;
+    });
+  }
+
+  Future<AttendanceSession> generateAttendanceSession({
+    required String eventId,
+    required UserModel requester,
+    required int durationMinutes,
+  }) async {
+    if (![5, 10, 15].contains(durationMinutes)) {
+      throw Exception('Please choose a duration of 5, 10, or 15 minutes.');
+    }
+
+    final eventRef = _firestore.collection('events').doc(eventId);
+    final requesterRef = _firestore.collection('users').doc(requester.uuid);
+    final checkInRef = _attendanceSessionsCollection(eventId).doc('check_in');
+    final checkOutRef = _attendanceSessionsCollection(eventId).doc('check_out');
+
+    return _firestore.runTransaction((transaction) async {
+      final eventSnapshot = await transaction.get(eventRef);
+      final requesterSnapshot = await transaction.get(requesterRef);
+      final checkInSnapshot = await transaction.get(checkInRef);
+      final checkOutSnapshot = await transaction.get(checkOutRef);
+
+      if (!eventSnapshot.exists || eventSnapshot.data() == null) {
+        throw Exception('Event not found.');
+      }
+
+      _assertCanManageAttendance(
+        eventData: eventSnapshot.data()!,
+        requesterId: requester.uuid,
+        requesterData: requesterSnapshot.data(),
+      );
+
+      final generatedCount =
+          (eventSnapshot.data()!['attendanceSessionGenerationCount'] as num?)
+              ?.toInt() ??
+          (checkInSnapshot.exists ? 1 : 0) + (checkOutSnapshot.exists ? 1 : 0);
+
+      if (generatedCount >= 2 || checkOutSnapshot.exists) {
+        throw Exception(
+          'Maximum 2 attendance sessions already generated for this event.',
+        );
+      }
+
+      final now = DateTime.now();
+      AttendanceType type;
+      DocumentReference<Map<String, dynamic>> sessionRef;
+
+      if (!checkInSnapshot.exists) {
+        type = AttendanceType.checkIn;
+        sessionRef = checkInRef;
+      } else {
+        final firstSession = AttendanceSession.fromMap(
+          checkInSnapshot.data()!,
+          checkInSnapshot.id,
+        );
+        if (now.isBefore(firstSession.expiresAt)) {
+          throw Exception(
+            'First QR session must expire before generating the second QR.',
+          );
+        }
+        type = AttendanceType.checkOut;
+        sessionRef = checkOutRef;
+      }
+
+      final session = AttendanceSession(
+        id: sessionRef.id,
+        eventId: eventId,
+        type: type,
+        manualCode: _generateManualCode(),
+        createdAt: now,
+        expiresAt: now.add(Duration(minutes: durationMinutes)),
+        generatedByUserId: requester.uuid,
+        generatedByName: requester.fullName,
+        durationMinutes: durationMinutes,
+      );
+
+      transaction.set(sessionRef, session.toMap());
+      transaction.update(eventRef, {
+        'attendanceSessionGenerationCount': generatedCount + 1,
+        'activeAttendanceSessionId': session.id,
+        'activeAttendanceSessionExpiresAt': Timestamp.fromDate(
+          session.expiresAt,
+        ),
+      });
+
+      return session;
+    });
+  }
+
+  Future<AttendanceRecord> submitAttendance({
+    required String eventId,
+    required UserModel student,
+    required String sessionId,
+    required String code,
+    required AttendanceMethod method,
+  }) async {
+    final normalizedCode = code.trim().toUpperCase();
+    final eventRef = _firestore.collection('events').doc(eventId);
+    final participantRef = eventRef
+        .collection('participants')
+        .doc(student.uuid);
+    final sessionRef = _attendanceSessionsCollection(eventId).doc(sessionId);
+    final recordRef = _attendanceRecordsCollection(
+      eventId,
+    ).doc(AttendanceRecord.documentId(sessionId, student.uuid));
+
+    developer.log(
+      'Submitting attendance: eventId=$eventId, sessionId=$sessionId, '
+      'userId=${student.uuid}, recordId=${recordRef.id}, '
+      'method=${method.value}, path=${recordRef.path}',
+      name: 'EventRepository.attendance',
+    );
+
+    try {
+      return await _firestore.runTransaction((transaction) async {
+        final eventSnapshot = await transaction.get(eventRef);
+        final participantSnapshot = await transaction.get(participantRef);
+        final sessionSnapshot = await transaction.get(sessionRef);
+        final recordSnapshot = await transaction.get(recordRef);
+
+        if (!eventSnapshot.exists) {
+          throw Exception('The selected event no longer exists.');
+        }
+        if (!participantSnapshot.exists) {
+          throw Exception('Please register for this event before attendance.');
+        }
+        if (!sessionSnapshot.exists || sessionSnapshot.data() == null) {
+          throw Exception('Attendance session is not active.');
+        }
+
+        final session = AttendanceSession.fromMap(
+          sessionSnapshot.data()!,
+          sessionSnapshot.id,
+        );
+        developer.log(
+          'Validated attendance session: eventId=${session.eventId}, '
+          'sessionId=${session.id}, type=${session.type.value}, '
+          'expiresAt=${session.expiresAt.toIso8601String()}',
+          name: 'EventRepository.attendance',
+        );
+
+        if (session.eventId != eventId) {
+          throw Exception('This attendance QR belongs to another event.');
+        }
+        if (session.manualCode.toUpperCase() != normalizedCode) {
+          throw Exception('Invalid attendance code.');
+        }
+        if (session.isExpired) {
+          throw Exception('Attendance QR has expired.');
+        }
+        if (recordSnapshot.exists) {
+          throw Exception(
+            'You have already submitted attendance for this session.',
+          );
+        }
+
+        final record = AttendanceRecord(
+          id: recordRef.id,
+          eventId: eventId,
+          sessionId: session.id,
+          userId: student.uuid,
+          studentName: student.fullName,
+          matricNumber: student.matricNumber ?? '',
+          type: session.type,
+          submittedAt: DateTime.now(),
+          method: method,
+        );
+        developer.log(
+          'Writing attendance record: eventId=${record.eventId}, '
+          'sessionId=${record.sessionId}, userId=${record.userId}, '
+          'recordId=${record.id}, type=${record.type.value}, '
+          'method=${record.method.value}, path=${recordRef.path}',
+          name: 'EventRepository.attendance',
+        );
+        transaction.set(recordRef, record.toMap());
+        return record;
+      });
+    } on FirebaseException catch (error, stackTrace) {
+      developer.log(
+        'Attendance submission failed: code=${error.code}, '
+        'message=${error.message}, eventId=$eventId, sessionId=$sessionId, '
+        'userId=${student.uuid}, recordId=${recordRef.id}, '
+        'method=${method.value}, path=${recordRef.path}',
+        name: 'EventRepository.attendance',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      throw Exception(_attendanceFirebaseErrorMessage(error));
+    }
+  }
+
+  Future<AttendanceRecord> submitAttendanceCode({
+    required String eventId,
+    required UserModel student,
+    required String code,
+    required AttendanceMethod method,
+  }) async {
+    final normalizedCode = code.trim().toUpperCase();
+    if (normalizedCode.isEmpty) {
+      throw Exception('Please enter an attendance code.');
+    }
+
+    developer.log(
+      'Looking up manual attendance code: eventId=$eventId, '
+      'userId=${student.uuid}, method=${method.value}, '
+      'path=events/$eventId/attendanceSessions',
+      name: 'EventRepository.attendance',
+    );
+
+    QuerySnapshot<Map<String, dynamic>> snapshot;
+    try {
+      snapshot = await _attendanceSessionsCollection(
+        eventId,
+      ).where('manualCode', isEqualTo: normalizedCode).limit(1).get();
+    } on FirebaseException catch (error, stackTrace) {
+      developer.log(
+        'Attendance code lookup failed: code=${error.code}, '
+        'message=${error.message}, eventId=$eventId, '
+        'userId=${student.uuid}, method=${method.value}',
+        name: 'EventRepository.attendance',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      throw Exception(_attendanceFirebaseErrorMessage(error));
+    }
+
+    if (snapshot.docs.isEmpty) {
+      throw Exception('Invalid attendance code.');
+    }
+
+    return submitAttendance(
+      eventId: eventId,
+      student: student,
+      sessionId: snapshot.docs.first.id,
+      code: normalizedCode,
+      method: method,
+    );
+  }
+
+  Future<void> upsertAttendanceRecord({
+    required String eventId,
+    required UserModel requester,
+    required String studentUserId,
+    required AttendanceType type,
+    DateTime? submittedAt,
+  }) async {
+    final eventRef = _firestore.collection('events').doc(eventId);
+    final requesterRef = _firestore.collection('users').doc(requester.uuid);
+    final participantRef = eventRef
+        .collection('participants')
+        .doc(studentUserId);
+    final sessionRef = _attendanceSessionsCollection(eventId).doc(type.value);
+    final recordRef = _attendanceRecordsCollection(
+      eventId,
+    ).doc(AttendanceRecord.documentId(type.value, studentUserId));
+
+    await _firestore.runTransaction((transaction) async {
+      final eventSnapshot = await transaction.get(eventRef);
+      final requesterSnapshot = await transaction.get(requesterRef);
+      final participantSnapshot = await transaction.get(participantRef);
+      final sessionSnapshot = await transaction.get(sessionRef);
+
+      if (!eventSnapshot.exists || eventSnapshot.data() == null) {
+        throw Exception('Event not found.');
+      }
+      _assertCanManageAttendance(
+        eventData: eventSnapshot.data()!,
+        requesterId: requester.uuid,
+        requesterData: requesterSnapshot.data(),
+      );
+      if (!participantSnapshot.exists || participantSnapshot.data() == null) {
+        throw Exception('The student is not registered for this event.');
+      }
+      if (!sessionSnapshot.exists) {
+        throw Exception('${type.label} session has not been generated yet.');
+      }
+
+      final participant = participantSnapshot.data()!;
+      final record = AttendanceRecord(
+        id: recordRef.id,
+        eventId: eventId,
+        sessionId: sessionRef.id,
+        userId: studentUserId,
+        studentName: participant['fullName']?.toString() ?? 'Unknown Student',
+        matricNumber: participant['matricNumber']?.toString() ?? '',
+        type: type,
+        submittedAt: submittedAt ?? DateTime.now(),
+        method: AttendanceMethod.admin,
+      );
+      transaction.set(recordRef, record.toMap());
+    });
+  }
+
+  Future<void> deleteAttendanceRecord({
+    required String eventId,
+    required UserModel requester,
+    required String recordId,
+  }) async {
+    final eventRef = _firestore.collection('events').doc(eventId);
+    final requesterRef = _firestore.collection('users').doc(requester.uuid);
+    final recordRef = _attendanceRecordsCollection(eventId).doc(recordId);
+
+    await _firestore.runTransaction((transaction) async {
+      final eventSnapshot = await transaction.get(eventRef);
+      final requesterSnapshot = await transaction.get(requesterRef);
+      if (!eventSnapshot.exists || eventSnapshot.data() == null) {
+        throw Exception('Event not found.');
+      }
+      _assertCanManageAttendance(
+        eventData: eventSnapshot.data()!,
+        requesterId: requester.uuid,
+        requesterData: requesterSnapshot.data(),
+      );
+      transaction.delete(recordRef);
+    });
+  }
+
+  void _assertCanManageAttendance({
+    required Map<String, dynamic> eventData,
+    required String requesterId,
+    required Map<String, dynamic>? requesterData,
+  }) {
+    final roleName = requesterData?['role']?.toString() ?? '';
+    final isManager = roleName == Role.admin.name || roleName == Role.exco.name;
+    final isCreator = eventData['createdByUserId'] == requesterId;
+    if (!isManager && !isCreator) {
+      throw Exception(
+        'Only Admin, EXCO, or the event creator can manage attendance.',
+      );
+    }
+  }
+
+  String _generateManualCode() {
+    final number = 1000 + _secureRandom.nextInt(9000);
+    return 'MASSA-$number';
+  }
+
+  String _attendanceFirebaseErrorMessage(FirebaseException error) {
+    switch (error.code) {
+      case 'permission-denied':
+        return 'Attendance could not be submitted. Confirm that you are '
+            'registered for this event and that the latest Firestore rules '
+            'have been deployed.';
+      case 'unavailable':
+        return 'Attendance service is temporarily unavailable. Check your '
+            'internet connection and try again.';
+      case 'deadline-exceeded':
+        return 'Attendance validation took too long. Please try again.';
+      case 'not-found':
+        return 'The attendance session is no longer available.';
+      default:
+        return 'Attendance could not be submitted. Please try again.';
+    }
   }
 
   Stream<List<String>> streamRegisteredEventIds(String userId) {

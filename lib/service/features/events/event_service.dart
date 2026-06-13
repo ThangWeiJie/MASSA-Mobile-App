@@ -1,5 +1,7 @@
 import 'dart:developer' as developer;
 
+import 'package:massa/models/attendance_record.dart';
+import 'package:massa/models/attendance_session.dart';
 import 'package:massa/models/crew_application.dart';
 import 'package:massa/models/event.dart';
 import 'package:massa/models/event_image_upload.dart';
@@ -193,6 +195,84 @@ class EventService {
 
   Stream<List<Map<String, dynamic>>> getEventParticipants(String eventId) {
     return eventRepository.getParticipantsStream(eventId);
+  }
+
+  Stream<List<AttendanceSession>> streamAttendanceSessions(String eventId) {
+    return eventRepository.streamAttendanceSessions(eventId);
+  }
+
+  Stream<List<AttendanceRecord>> streamAttendanceRecords(String eventId) {
+    return eventRepository.streamAttendanceRecords(eventId);
+  }
+
+  Future<AttendanceSession> generateAttendanceSession({
+    required String eventId,
+    required UserModel requester,
+    required int durationMinutes,
+  }) {
+    return eventRepository.generateAttendanceSession(
+      eventId: eventId,
+      requester: requester,
+      durationMinutes: durationMinutes,
+    );
+  }
+
+  Future<AttendanceRecord> submitAttendance({
+    required String eventId,
+    required UserModel student,
+    required String sessionId,
+    required String code,
+    required AttendanceMethod method,
+  }) {
+    return eventRepository.submitAttendance(
+      eventId: eventId,
+      student: student,
+      sessionId: sessionId,
+      code: code,
+      method: method,
+    );
+  }
+
+  Future<AttendanceRecord> submitAttendanceCode({
+    required String eventId,
+    required UserModel student,
+    required String code,
+    required AttendanceMethod method,
+  }) {
+    return eventRepository.submitAttendanceCode(
+      eventId: eventId,
+      student: student,
+      code: code,
+      method: method,
+    );
+  }
+
+  Future<void> upsertAttendanceRecord({
+    required String eventId,
+    required UserModel requester,
+    required String studentUserId,
+    required AttendanceType type,
+    DateTime? submittedAt,
+  }) {
+    return eventRepository.upsertAttendanceRecord(
+      eventId: eventId,
+      requester: requester,
+      studentUserId: studentUserId,
+      type: type,
+      submittedAt: submittedAt,
+    );
+  }
+
+  Future<void> deleteAttendanceRecord({
+    required String eventId,
+    required UserModel requester,
+    required String recordId,
+  }) {
+    return eventRepository.deleteAttendanceRecord(
+      eventId: eventId,
+      requester: requester,
+      recordId: recordId,
+    );
   }
 
   Stream<List<String>> streamRegisteredEventIds(String userId) {

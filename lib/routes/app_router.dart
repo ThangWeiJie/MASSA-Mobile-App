@@ -12,11 +12,13 @@ import 'package:massa/view_models/features/authentication/login_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/profile_viewmodel.dart';
 import 'package:massa/view_models/features/authentication/signup_viewmodel.dart';
 import 'package:massa/view_models/features/events/create_event_viewmodel.dart';
+import 'package:massa/view_models/features/events/attendance_session_viewmodel.dart';
 import 'package:massa/view_models/features/events/crew_applications_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_documentation_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_details_viewmodel.dart';
 import 'package:massa/view_models/features/events/event_registration_viewmodel.dart';
 import 'package:massa/view_models/features/events/attendee_list_viewmodel.dart';
+import 'package:massa/view_models/features/events/mark_attendance_viewmodel.dart';
 import 'package:massa/view_models/features/exco/exco_members_viewmodel.dart';
 import 'package:massa/views/exco_guard.dart';
 import 'package:massa/views/features/authentication/forgot_password_screen.dart';
@@ -24,12 +26,16 @@ import 'package:massa/views/features/authentication/signin_screen.dart';
 import 'package:massa/views/features/authentication/signup_screen.dart';
 import 'package:massa/views/features/authentication/verify_email.dart';
 import 'package:massa/views/features/events/create_event_page.dart';
+import 'package:massa/views/features/events/attendance_qr_scanner_page.dart';
+import 'package:massa/views/features/events/attendance_session_page.dart';
 import 'package:massa/views/features/events/crew_applications_page.dart';
 import 'package:massa/views/features/events/event_documentation_screen.dart';
 import 'package:massa/views/features/events/event_details_page.dart';
 import 'package:massa/views/features/events/event_home_page.dart';
 import 'package:massa/views/features/events/event_registration_page.dart';
 import 'package:massa/views/features/events/attendee_list_page.dart';
+import 'package:massa/views/features/events/manual_attendance_code_page.dart';
+import 'package:massa/views/features/events/mark_attendance_page.dart';
 import 'package:massa/views/features/exco/exco_members_page.dart';
 import 'package:massa/views/home_page_content.dart';
 import 'package:massa/views/main_shell.dart';
@@ -199,14 +205,103 @@ class AppRouter {
             path: '$eventPath/details/:eventId/attendees',
             builder: (context, state) {
               final eventId = state.pathParameters['eventId']!;
+              final currentUser = context.read<UserModel?>();
+              if (currentUser == null) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
               return ExcoGuard(
                 child: ChangeNotifierProvider(
                   create: (_) => AttendeeListViewModel(
                     eventService: context.read<EventService>(),
                     eventId: eventId,
+                    requester: currentUser,
                   ),
                   child: const AttendeeListPage(),
                 ),
+              );
+            },
+          ),
+          GoRoute(
+            path: '$eventPath/details/:eventId/attendance/manage',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+              final currentUser = context.read<UserModel?>();
+              if (currentUser == null) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return ExcoGuard(
+                child: ChangeNotifierProvider(
+                  create: (_) => AttendanceSessionViewModel(
+                    eventService: context.read<EventService>(),
+                    eventId: eventId,
+                    requester: currentUser,
+                  ),
+                  child: const AttendanceSessionPage(),
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: '$eventPath/details/:eventId/attendance',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+              final currentUser = context.read<UserModel?>();
+              if (currentUser == null) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return ChangeNotifierProvider(
+                create: (_) => MarkAttendanceViewModel(
+                  eventService: context.read<EventService>(),
+                  eventId: eventId,
+                  student: currentUser,
+                ),
+                child: const MarkAttendancePage(),
+              );
+            },
+          ),
+          GoRoute(
+            path: '$eventPath/details/:eventId/attendance/code',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+              final currentUser = context.read<UserModel?>();
+              if (currentUser == null) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return ChangeNotifierProvider(
+                create: (_) => MarkAttendanceViewModel(
+                  eventService: context.read<EventService>(),
+                  eventId: eventId,
+                  student: currentUser,
+                ),
+                child: const ManualAttendanceCodePage(),
+              );
+            },
+          ),
+          GoRoute(
+            path: '$eventPath/details/:eventId/attendance/scan',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+              final currentUser = context.read<UserModel?>();
+              if (currentUser == null) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return ChangeNotifierProvider(
+                create: (_) => MarkAttendanceViewModel(
+                  eventService: context.read<EventService>(),
+                  eventId: eventId,
+                  student: currentUser,
+                ),
+                child: const AttendanceQrScannerPage(),
               );
             },
           ),
