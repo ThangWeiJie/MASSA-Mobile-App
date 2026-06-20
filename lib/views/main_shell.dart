@@ -32,6 +32,7 @@ class MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<UserModel?>();
     final availableTabs = _availableTabs(context);
 
     return Scaffold(
@@ -117,14 +118,19 @@ class MainShell extends StatelessWidget {
                             ),
                           ],
                         ),
-                        child: const CircleAvatar(
+                         child: CircleAvatar(
                           radius: 18,
                           backgroundColor: Colors.white,
-                          child: Icon(
-                            Icons.person,
-                            color: Colors.grey,
-                            size: 20,
-                          ),
+                          backgroundImage: user != null && user.profileImageUrl.trim().isNotEmpty
+                              ? NetworkImage(user.profileImageUrl)
+                              : null,
+                          child: user == null || user.profileImageUrl.trim().isEmpty
+                              ? const Icon(
+                                  Icons.person,
+                                  color: Colors.grey,
+                                  size: 20,
+                                )
+                              : null,
                         ),
                       ),
                       onSelected: (value) {

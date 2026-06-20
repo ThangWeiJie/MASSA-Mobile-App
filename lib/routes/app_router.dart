@@ -144,7 +144,7 @@ class AppRouter {
             path: '$eventPath/past',
             name: "Past Events",
             pageBuilder: (context, state) => const NoTransitionPage(
-              child: ExcoGuard(child: PastEventsPage()),
+              child: PastEventsPage(),
             ),
           ),
           GoRoute(

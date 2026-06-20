@@ -52,7 +52,9 @@ class EventDetailsPage extends StatelessWidget {
     }
 
     final isPastEvent = event.endDateTime.isBefore(DateTime.now());
-    if (isPastEvent && !canManageEvent) {
+    final isRegistered = viewModel.isUserRegistered;
+    final isCrew = viewModel.crewApplication?.status == CrewApplicationStatus.accepted;
+    if (isPastEvent && !canManageEvent && !isRegistered && !isCrew) {
       return Scaffold(
         body: Center(
           child: Padding(
@@ -580,6 +582,8 @@ class EventDetailsPage extends StatelessWidget {
     final event = viewModel.event!;
     final isRegistered = viewModel.isUserRegistered;
     final isFull = event.registeredCount >= event.capacity;
+    final isPastEvent = event.endDateTime.isBefore(DateTime.now());
+    final isCrew = viewModel.crewApplication?.status == CrewApplicationStatus.accepted;
 
     return Column(
       children: [
@@ -657,16 +661,104 @@ class EventDetailsPage extends StatelessWidget {
 
         // Registration Button Logic
         if (!canManageDocumentation) ...[
-          if (event.isCrewRegistrationOpen) ...[
-            _buildCrewApplicationAction(context, viewModel),
-            const SizedBox(height: 12),
+          if (isPastEvent) ...[
+            if (isCrew) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green[50]!, Colors.green[100]!],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.green[200]!),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.verified_user_rounded, color: Colors.green[700], size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "You served as Crew",
+                            style: TextStyle(
+                              color: Colors.green[800],
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "Assigned Unit: ${viewModel.crewApplication?.assignedUnit ?? 'N/A'}",
+                            style: TextStyle(
+                              color: Colors.green[700],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else if (isRegistered) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orange[50]!, Colors.amber[50]!],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.orange[200]!),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle_outline_rounded, color: Colors.orange[800], size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "You attended this event",
+                            style: TextStyle(
+                              color: Colors.orange[900],
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            "Thank you for participating!",
+                            style: TextStyle(
+                              color: Colors.brown,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ]
+          ] else ...[
+            if (event.isCrewRegistrationOpen) ...[
+              _buildCrewApplicationAction(context, viewModel),
+              const SizedBox(height: 12),
+            ],
+            _buildEventRegistrationButton(
+              context: context,
+              viewModel: viewModel,
+              isFull: isFull,
+              isRegistered: isRegistered,
+            ),
           ],
-          _buildEventRegistrationButton(
-            context: context,
-            viewModel: viewModel,
-            isFull: isFull,
-            isRegistered: isRegistered,
-          ),
         ],
       ],
     );

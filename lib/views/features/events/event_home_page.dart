@@ -193,10 +193,8 @@ class EventHomePage extends StatelessWidget {
               onChanged: viewModel.updateSearchQuery,
             ),
           ),
-          if (canManageEvents) ...[
-            const SizedBox(width: 10),
-            _PastEventsButton(onTap: () => context.push('$eventPath/past')),
-          ],
+          const SizedBox(width: 10),
+          _PastEventsButton(onTap: () => context.push('$eventPath/past')),
         ],
       ),
     );
@@ -209,6 +207,9 @@ class PastEventsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<EventViewModel>();
+    final user = context.watch<UserModel?>();
+    final isStaff = user?.role.canManageEvents ?? false;
+    final count = isStaff ? viewModel.pastEventCount : viewModel.getRegisteredPastEventCount();
 
     return Scaffold(
       body: Container(
@@ -249,7 +250,7 @@ class PastEventsPage extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '${viewModel.pastEventCount} archived programs',
+                                '$count archived programs',
                                 style: TextStyle(
                                   color: Colors.amber[900]!.withValues(
                                     alpha: 0.7,
@@ -455,7 +456,11 @@ class PastEventsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<EventViewModel>();
-    final groupedEvents = viewModel.pastEventsByYear;
+    final user = context.watch<UserModel?>();
+    final isStaff = user?.role.canManageEvents ?? false;
+    final groupedEvents = isStaff
+        ? viewModel.pastEventsByYear
+        : viewModel.getRegisteredPastEventsByYear();
 
     if (viewModel.isLoading) {
       return const Center(

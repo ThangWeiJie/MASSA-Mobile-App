@@ -33,6 +33,24 @@ class EventViewModel extends ChangeNotifier {
         (total, events) => total + events.length,
       );
 
+  Map<int, List<Event>> getRegisteredPastEventsByYear() {
+    final Map<int, List<Event>> filtered = {};
+    _filteredPastEventsByYear.forEach((year, list) {
+      final studentList = list.where((event) => isRegistered(event.id ?? '')).toList();
+      if (studentList.isNotEmpty) {
+        filtered[year] = studentList;
+      }
+    });
+    return filtered;
+  }
+
+  int getRegisteredPastEventCount() {
+    return getRegisteredPastEventsByYear().values.fold(
+          0,
+          (total, events) => total + events.length,
+        );
+  }
+
   EventViewModel(this._eventService) {
     _subscribeToEvents();
   }
