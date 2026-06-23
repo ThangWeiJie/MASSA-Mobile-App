@@ -1,0 +1,426 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdminOnly() {
+      return isSignedIn() && userDoc().data.role == 'admin';
+    }
+
+    function isExco() {
+      return isSignedIn() && userDoc().data.role == 'exco';
+    }
+
+    function canManageEvents() {
+      return isAdminOnly() || isExco();
+    }
+
+    function eventDoc(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId));
+    }
+
+    function isEventCreator(eventId) {
+      return isSignedIn()
+        && eventDoc(eventId).data.createdByUserId == request.auth.uid;
+    }
+
+    function canManageEvent(eventId) {
+      return canManageEvents() || isEventCreator(eventId);
+    }
+
+    function isEventParticipant(eventId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/events/$(eventId)/participants/$(request.auth.uid));
+    }
+
+    function attendanceSessionPath(eventId, sessionId) {
+      return /databases/$(database)/documents/events/$(eventId)/attendanceSessions/$(sessionId);
+    }
+
+    function validAttendanceType(type) {
+      return type in ['check_in', 'check_out'];
+    }
+
+    function isOwnAttendanceRecordId(recordId) {
+      return isSignedIn()
+        && recordId in [
+          'check_in_' + request.auth.uid,
+          'check_out_' + request.auth.uid
+        ];
+    }
+
+    function isTimestampNearRequestTime(timestamp) {
+      return timestamp >= request.time - duration.value(2, 'm')
+        && timestamp <= request.time + duration.value(2, 'm');
+    }
+
+    function validSessionDuration() {
+      return request.resource.data.durationMinutes in [5, 10, 15]
+        && request.resource.data.expiresAt
+          == request.resource.data.createdAt
+            + duration.value(request.resource.data.durationMinutes, 'm');
+    }
+
+    function validAttendanceSession(eventId, sessionId) {
+      return request.resource.data.keys().hasAll([
+          'eventId',
+          'type',
+          'manualCode',
+          'createdAt',
+          'expiresAt',
+          'generatedByUserId',
+          'generatedByName',
+          'durationMinutes'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'eventId',
+          'type',
+          'manualCode',
+          'createdAt',
+          'expiresAt',
+          'generatedByUserId',
+          'generatedByName',
+          'durationMinutes'
+        ])
+        && request.resource.data.eventId == eventId
+        && request.resource.data.generatedByUserId == request.auth.uid
+        && request.resource.data.generatedByName is string
+        && request.resource.data.manualCode is string
+        && request.resource.data.manualCode.matches('^MASSA-[0-9]{4}$')
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.durationMinutes is int
+        && isTimestampNearRequestTime(request.resource.data.createdAt)
+        && validSessionDuration()
+        && (
+          (
+            sessionId == 'check_in'
+            && request.resource.data.type == 'check_in'
+            && !exists(attendanceSessionPath(eventId, 'check_in'))
+            && !exists(attendanceSessionPath(eventId, 'check_out'))
+          )
+          ||
+          (
+            sessionId == 'check_out'
+            && request.resource.data.type == 'check_out'
+            && exists(attendanceSessionPath(eventId, 'check_in'))
+            && !exists(attendanceSessionPath(eventId, 'check_out'))
+            && get(attendanceSessionPath(eventId, 'check_in')).data.expiresAt
+              <= request.time
+          )
+        );
+    }
+
+    function validStudentAttendanceRecord(eventId, recordId) {
+      let sessionId = request.resource.data.sessionId;
+      let sessionPath = attendanceSessionPath(eventId, sessionId);
+
+      return request.resource.data.keys().hasAll([
+          'eventId',
+          'sessionId',
+          'userId',
+          'studentName',
+          'matricNumber',
+          'type',
+          'submittedAt',
+          'method'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'eventId',
+          'sessionId',
+          'userId',
+          'studentName',
+          'matricNumber',
+          'type',
+          'submittedAt',
+          'method'
+        ])
+        && request.resource.data.eventId == eventId
+        && request.resource.data.userId == request.auth.uid
+        && recordId == sessionId + '_' + request.auth.uid
+        && request.resource.data.studentName is string
+        && request.resource.data.matricNumber is string
+        && request.resource.data.submittedAt is timestamp
+        && isTimestampNearRequestTime(request.resource.data.submittedAt)
+        && request.resource.data.method in ['qr_scan', 'manual_code']
+        && validAttendanceType(request.resource.data.type)
+        && exists(sessionPath)
+        && get(sessionPath).data.eventId == eventId
+        && get(sessionPath).data.type == request.resource.data.type
+        && get(sessionPath).data.expiresAt > request.time;
+    }
+
+    function validAdminAttendanceRecord(eventId, recordId) {
+      let sessionId = request.resource.data.sessionId;
+      let userId = request.resource.data.userId;
+      let sessionPath = attendanceSessionPath(eventId, sessionId);
+
+      return request.resource.data.keys().hasAll([
+          'eventId',
+          'sessionId',
+          'userId',
+          'studentName',
+          'matricNumber',
+          'type',
+          'submittedAt',
+          'method'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'eventId',
+          'sessionId',
+          'userId',
+          'studentName',
+          'matricNumber',
+          'type',
+          'submittedAt',
+          'method'
+        ])
+        && request.resource.data.eventId == eventId
+        && request.resource.data.userId is string
+        && request.resource.data.studentName is string
+        && request.resource.data.matricNumber is string
+        && request.resource.data.submittedAt is timestamp
+        && request.resource.data.method == 'admin'
+        && validAttendanceType(request.resource.data.type)
+        && recordId == sessionId + '_' + userId
+        && exists(sessionPath)
+        && get(sessionPath).data.eventId == eventId
+        && get(sessionPath).data.type == request.resource.data.type
+        && exists(/databases/$(database)/documents/events/$(eventId)/participants/$(userId));
+    }
+
+    function isEventCountOnlyUpdate(eventId) {
+      let participantPath = /databases/$(database)/documents/events/$(eventId)/participants/$(request.auth.uid);
+
+      return isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['registeredCount'])
+        && (
+          (
+            request.resource.data.registeredCount
+              == resource.data.registeredCount + 1
+            && resource.data.registeredCount < resource.data.capacity
+            && !exists(participantPath)
+            && existsAfter(participantPath)
+          )
+          ||
+          (
+            request.resource.data.registeredCount
+              == resource.data.registeredCount - 1
+            && resource.data.registeredCount > 0
+            && exists(participantPath)
+            && !existsAfter(participantPath)
+          )
+        );
+    }
+
+    function isRegularEventManagerUpdate() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'attendanceSessionGenerationCount',
+          'activeAttendanceSessionId',
+          'activeAttendanceSessionExpiresAt'
+        ])
+        && canManageEvents();
+    }
+
+    function isAttendanceSessionEventUpdate(eventId) {
+      let sessionId = request.resource.data.activeAttendanceSessionId;
+      let sessionPath = attendanceSessionPath(eventId, sessionId);
+      let previousCount =
+        resource.data.get('attendanceSessionGenerationCount', 0);
+      let nextCount =
+        request.resource.data.attendanceSessionGenerationCount;
+
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'attendanceSessionGenerationCount',
+          'activeAttendanceSessionId',
+          'activeAttendanceSessionExpiresAt'
+        ])
+        && canManageEvent(eventId)
+        && nextCount is int
+        && nextCount >= 1
+        && nextCount <= 2
+        && (
+          nextCount == previousCount + 1
+          ||
+          (
+            sessionId == 'check_out'
+            && previousCount == 0
+            && nextCount == 2
+            && exists(attendanceSessionPath(eventId, 'check_in'))
+          )
+        )
+        && (
+          (nextCount == 1 && sessionId == 'check_in')
+          || (nextCount == 2 && sessionId == 'check_out')
+        )
+        && request.resource.data.activeAttendanceSessionExpiresAt is timestamp
+        && existsAfter(sessionPath)
+        && getAfter(sessionPath).data.eventId == eventId
+        && getAfter(sessionPath).data.type == sessionId
+        && getAfter(sessionPath).data.expiresAt
+          == request.resource.data.activeAttendanceSessionExpiresAt;
+    }
+
+    match /{path=**}/participants/{userId} {
+      allow read: if isSignedIn()
+        && (canManageEvents() || request.auth.uid == userId);
+    }
+
+    match /users/{uuid} {
+      allow create: if isSignedIn()
+        && request.auth.uid == uuid
+        && request.resource.data.role == 'user';
+
+      allow read: if isSignedIn()
+        && (request.auth.uid == uuid || isAdminOnly());
+
+      allow list: if canManageEvents();
+
+      allow update: if isSignedIn() && (
+        isAdminOnly()
+        ||
+        (
+          request.auth.uid == uuid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'fullName',
+            'phone',
+            'department',
+            'profileImageUrl',
+            'profileImageStoragePath',
+            'fcmToken'
+          ])
+        )
+      );
+
+      allow delete: if isAdminOnly();
+    }
+
+    match /events/{eventId} {
+      allow read: if isSignedIn();
+
+      allow create, delete: if canManageEvents();
+
+      allow update: if isRegularEventManagerUpdate()
+        || isEventCountOnlyUpdate(eventId)
+        || isAttendanceSessionEventUpdate(eventId);
+
+      match /participants/{userId} {
+        allow read: if isSignedIn()
+          && (canManageEvents() || request.auth.uid == userId);
+
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.keys().hasOnly([
+            'userId',
+            'fullName',
+            'matricNumber',
+            'joinedAt'
+          ]);
+
+        allow update: if false;
+
+        allow delete: if isSignedIn()
+          && (request.auth.uid == userId || canManageEvents());
+      }
+
+      match /attendanceSessions/{sessionId} {
+        allow read: if isSignedIn()
+          && (isEventParticipant(eventId) || canManageEvent(eventId));
+
+        allow create: if canManageEvent(eventId)
+          && validAttendanceSession(eventId, sessionId);
+
+        allow update, delete: if false;
+      }
+
+      match /attendanceRecords/{recordId} {
+        allow read: if isSignedIn()
+          && (
+            isOwnAttendanceRecordId(recordId)
+            || canManageEvent(eventId)
+          );
+
+        allow create: if isSignedIn() && (
+          (
+            isEventParticipant(eventId)
+            && validStudentAttendanceRecord(eventId, recordId)
+          )
+          ||
+          (
+            canManageEvent(eventId)
+            && validAdminAttendanceRecord(eventId, recordId)
+          )
+        );
+
+        allow update: if canManageEvent(eventId)
+          && validAdminAttendanceRecord(eventId, recordId);
+
+        allow delete: if canManageEvent(eventId);
+      }
+
+      match /documentation/{documentId} {
+        allow read, write: if canManageEvents();
+      }
+
+      match /crewApplications/{userId} {
+        allow read: if isSignedIn()
+          && (canManageEvents() || request.auth.uid == userId);
+
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && request.resource.data.commitmentAccepted == true;
+
+        allow update: if canManageEvents()
+          && request.resource.data.status
+            in ['accepted', 'declined', 'waitlisted']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status',
+            'assignedUnit',
+            'inviteLink',
+            'reviewedByUserId',
+            'reviewedByName',
+            'decidedAt',
+            'updatedAt'
+          ]);
+
+        allow delete: if isAdminOnly();
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly(['isRead']);
+
+      allow create: if isSignedIn() && (
+        canManageEvents()
+        ||
+        (
+          request.resource.data.type == 'crew_application_submitted'
+          && request.resource.data.eventId is string
+          && request.resource.data.metadata.applicationId == request.auth.uid
+          && request.resource.data.userId
+            == get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.createdByUserId
+        )
+      );
+
+      allow delete: if isAdminOnly();
+    }
+  }
+}
