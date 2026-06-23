@@ -5,6 +5,7 @@ const String homePath = "/";
 const String profilePath = "/profile";
 const String eventPath = "/events";
 const String excoMembersPath = "/exco/members";
+const String eventTaskPath = "/events/details/:eventId/tasks";
 
 final List<NavTab> tabs = [
   NavTab(path: homePath, icon: Icons.home, label: "Home"),

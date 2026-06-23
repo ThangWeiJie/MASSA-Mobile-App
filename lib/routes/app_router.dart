@@ -42,6 +42,9 @@ import 'package:massa/views/main_shell.dart';
 import 'package:massa/views/notifications_page.dart';
 import 'package:massa/views/features/profile/profile_page.dart';
 import 'package:provider/provider.dart';
+import 'package:massa/repository/event_task_repository.dart';
+import 'package:massa/view_models/features/events/event_task_management_viewmodel.dart';
+import 'package:massa/views/features/events/event_task_management_page.dart';
 
 class AppRouter {
   final AuthNotifier authNotifier;
@@ -147,7 +150,7 @@ class AppRouter {
             path: '$eventPath/past',
             name: "Past Events",
             pageBuilder: (context, state) => const NoTransitionPage(
-              child: ExcoGuard(child: PastEventsPage()),
+              child: PastEventsPage(),
             ),
           ),
           GoRoute(
@@ -316,6 +319,25 @@ class AppRouter {
                     eventId: eventId,
                   ),
                   child: const CrewApplicationsPage(),
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: '$eventPath/details/:eventId/tasks',
+            builder: (context, state) {
+              final eventId = state.pathParameters['eventId']!;
+              final currentUser = context.read<UserModel?>();
+
+              return ExcoGuard(
+                child: ChangeNotifierProvider(
+                  create: (_) => EventTaskManagementViewModel(
+                    eventId: eventId,
+                    taskRepository: EventTaskRepository(),
+                    userRepository: context.read<UserRepository>(),
+                    currentUser: currentUser,
+                  ),
+                  child: const EventTaskManagementPage(),
                 ),
               );
             },
